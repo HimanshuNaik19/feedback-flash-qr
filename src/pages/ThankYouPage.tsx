@@ -1,6 +1,4 @@
 
-import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
 import { Check } from 'lucide-react';
 
 const ThankYouPage = () => {
@@ -18,9 +16,9 @@ const ThankYouPage = () => {
         </p>
         
         <div className="pt-4">
-          <Button asChild className="bg-feedback-blue hover:bg-feedback-darkblue">
-            <Link to="/">Return Home</Link>
-          </Button>
+          <p className="text-sm text-muted-foreground">
+            For privacy reasons, you can now close this page.
+          </p>
         </div>
       </div>
     </div>
