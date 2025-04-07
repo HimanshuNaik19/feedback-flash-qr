@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getQRCode, isQRCodeValid } from '@/utils/qrCodeUtils';
+import { getQRCode, isQRCodeValid, incrementScan } from '@/utils/qrCodeUtils';
 import FeedbackForm from '@/components/FeedbackForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle } from 'lucide-react';
@@ -12,20 +12,33 @@ const FeedbackPage = () => {
   const [isValid, setIsValid] = useState<boolean | null>(null);
   const [context, setContext] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [validationMessage, setValidationMessage] = useState<string>('');
   
   useEffect(() => {
     if (!id) {
       setIsValid(false);
+      setValidationMessage('No QR code ID provided');
       return;
     }
     
+    console.log('Checking QR code validity for ID:', id);
     const qrCode = getQRCode(id);
+    
     if (!qrCode) {
+      console.log('QR code not found in storage');
       setIsValid(false);
+      setValidationMessage('QR code not found. It may have been deleted or never existed.');
       return;
     }
     
+    console.log('QR code found:', qrCode);
     const valid = isQRCodeValid(qrCode);
+    
+    if (valid) {
+      // Only increment scan count if the QR code is valid
+      incrementScan(id);
+    }
+    
     setIsValid(valid);
     setContext(qrCode.context);
   }, [id]);
@@ -63,7 +76,7 @@ const FeedbackPage = () => {
           </CardHeader>
           <CardContent>
             <p className="text-center text-muted-foreground">
-              Please contact the administrator to get a new QR code.
+              {validationMessage || 'Please contact the administrator to get a new QR code.'}
             </p>
           </CardContent>
         </Card>
