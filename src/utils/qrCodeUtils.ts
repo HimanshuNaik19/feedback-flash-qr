@@ -67,17 +67,43 @@ export const getQRCodeUrl = (baseUrl: string, qrCodeId: string): string => {
   return `${baseUrl}/feedback/${qrCodeId}`;
 };
 
-// Mock function to simulate storing QR codes (would be replaced by actual API calls)
-const storedQRCodes: Record<string, QRCodeContext> = {};
+// Load stored QR codes from localStorage
+const loadStoredQRCodes = (): Record<string, QRCodeContext> => {
+  try {
+    const storedData = localStorage.getItem('qrCodes');
+    if (storedData) {
+      return JSON.parse(storedData);
+    }
+  } catch (error) {
+    console.error('Error loading stored QR codes:', error);
+  }
+  return {};
+};
+
+// Save QR codes to localStorage
+const saveQRCodesToStorage = (qrCodes: Record<string, QRCodeContext>) => {
+  try {
+    localStorage.setItem('qrCodes', JSON.stringify(qrCodes));
+  } catch (error) {
+    console.error('Error saving QR codes to storage:', error);
+  }
+};
+
+// Initialize stored QR codes from localStorage
+let storedQRCodes: Record<string, QRCodeContext> = loadStoredQRCodes();
 
 export const storeQRCode = (qrCode: QRCodeContext): void => {
   // Add logging to debug storage
   console.log('Storing QR code:', qrCode);
   storedQRCodes[qrCode.id] = qrCode;
+  saveQRCodesToStorage(storedQRCodes);
   console.log('Current stored QR codes:', Object.keys(storedQRCodes));
 };
 
 export const getQRCode = (id: string): QRCodeContext | null => {
+  // Reload from localStorage to ensure we have the latest data
+  storedQRCodes = loadStoredQRCodes();
+  
   // Add logging to debug retrieval
   console.log('Retrieving QR code with ID:', id);
   const qrCode = storedQRCodes[id] || null;
@@ -86,13 +112,19 @@ export const getQRCode = (id: string): QRCodeContext | null => {
 };
 
 export const getAllQRCodes = (): QRCodeContext[] => {
+  // Reload from localStorage to ensure we have the latest data
+  storedQRCodes = loadStoredQRCodes();
   return Object.values(storedQRCodes);
 };
 
 export const incrementScan = (id: string): QRCodeContext | null => {
+  // Reload from localStorage to ensure we have the latest data
+  storedQRCodes = loadStoredQRCodes();
+  
   const qrCode = storedQRCodes[id];
   if (!qrCode) return null;
   
   qrCode.currentScans += 1;
+  saveQRCodesToStorage(storedQRCodes);
   return qrCode;
 };

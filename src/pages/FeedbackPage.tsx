@@ -37,6 +37,15 @@ const FeedbackPage = () => {
     if (valid) {
       // Only increment scan count if the QR code is valid
       incrementScan(id);
+    } else {
+      // Set appropriate validation message based on why it's invalid
+      if (new Date() > new Date(qrCode.expiresAt)) {
+        setValidationMessage('This QR code has expired.');
+      } else if (qrCode.currentScans >= qrCode.maxScans) {
+        setValidationMessage('This QR code has reached its maximum number of scans.');
+      } else if (!qrCode.isActive) {
+        setValidationMessage('This QR code has been deactivated.');
+      }
     }
     
     setIsValid(valid);
