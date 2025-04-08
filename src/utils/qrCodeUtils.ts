@@ -128,3 +128,31 @@ export const incrementScan = (id: string): QRCodeContext | null => {
   saveQRCodesToStorage(storedQRCodes);
   return qrCode;
 };
+
+export const updateQRCode = (id: string, updates: Partial<QRCodeContext>): QRCodeContext | null => {
+  // Reload from localStorage to ensure we have the latest data
+  storedQRCodes = loadStoredQRCodes();
+  
+  const qrCode = storedQRCodes[id];
+  if (!qrCode) return null;
+  
+  // Update the QR code with the provided updates
+  const updatedQRCode = { ...qrCode, ...updates };
+  storedQRCodes[id] = updatedQRCode;
+  saveQRCodesToStorage(storedQRCodes);
+  
+  return updatedQRCode;
+};
+
+export const deleteQRCode = (id: string): boolean => {
+  // Reload from localStorage to ensure we have the latest data
+  storedQRCodes = loadStoredQRCodes();
+  
+  if (!storedQRCodes[id]) return false;
+  
+  delete storedQRCodes[id];
+  saveQRCodesToStorage(storedQRCodes);
+  
+  return true;
+};
+

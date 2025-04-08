@@ -11,15 +11,20 @@ const FeedbackDashboard = () => {
   const [feedbackItems, setFeedbackItems] = useState<Feedback[]>([]);
   const [selectedTab, setSelectedTab] = useState('all');
   
-  useEffect(() => {
+  const loadFeedbackData = () => {
     // In a real app, this would fetch data from an API
     const feedback = getAllFeedback();
     setFeedbackItems(feedback);
+  };
+  
+  useEffect(() => {
+    // Load initial data
+    loadFeedbackData();
     
-    // Set up polling for real-time updates
+    // Set up polling for real-time updates (every 3 seconds)
     const intervalId = setInterval(() => {
-      setFeedbackItems(getAllFeedback());
-    }, 5000);
+      loadFeedbackData();
+    }, 3000);
     
     return () => clearInterval(intervalId);
   }, []);

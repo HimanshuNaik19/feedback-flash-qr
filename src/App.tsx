@@ -9,6 +9,7 @@ import GeneratePage from "./pages/GeneratePage";
 import FeedbackPage from "./pages/FeedbackPage";
 import ThankYouPage from "./pages/ThankYouPage";
 import NotFound from "./pages/NotFound";
+import ManageQRCodesPage from "./pages/ManageQRCodesPage";
 
 const queryClient = new QueryClient();
 
@@ -23,6 +24,7 @@ const App = () => (
           <Route path="/generate" element={<GeneratePage />} />
           <Route path="/feedback/:id" element={<FeedbackPage />} />
           <Route path="/thank-you" element={<ThankYouPage />} />
+          <Route path="/manage" element={<ManageQRCodesPage />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

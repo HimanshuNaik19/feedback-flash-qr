@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { QrCode, BarChart2, Plus } from 'lucide-react';
+import { QrCode, BarChart2, Plus, List } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const Navigation = () => {
@@ -20,6 +20,11 @@ const Navigation = () => {
       path: '/generate', 
       icon: <QrCode className="h-5 w-5" /> 
     },
+    {
+      name: 'Manage QR Codes',
+      path: '/manage',
+      icon: <List className="h-5 w-5" />
+    }
   ];
   
   return (
