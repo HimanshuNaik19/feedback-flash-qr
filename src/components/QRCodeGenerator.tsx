@@ -25,9 +25,33 @@ const QRCodeGenerator = () => {
     const qrCodeData = generateQRCodeData(context, expiryHours, maxScans);
     storeQRCode(qrCodeData);
     
-    // Use the full window.location.origin to ensure we have an absolute URL
-    // that works across devices
-    const baseUrl = window.location.origin;
+    // Use the deployed URL if available or fallback to current URL
+    // For mobile devices, we need a fully qualified public URL
+    let baseUrl;
+    
+    // First check if we're on a deployed Lovable domain
+    if (window.location.hostname.includes('lovable.app') || 
+        window.location.hostname.includes('lovableproject.com')) {
+      baseUrl = window.location.origin;
+    } 
+    // Check if we might be on a production domain like Netlify or custom domain
+    else if (!window.location.hostname.includes('localhost') && 
+             !window.location.hostname.includes('127.0.0.1')) {
+      baseUrl = window.location.origin;
+    }
+    // If we're on localhost, we need to use a public URL since QR codes scanned on mobile
+    // won't be able to access localhost of a different device
+    else {
+      // Attempt to use the public URL of the deployed app if available
+      // This is a common pattern for deployments - adjust if using a different provider
+      baseUrl = 'https://feedback-flash-qr.lovable.app';
+      
+      // Show an informative toast that local QR codes won't work on different devices
+      toast.info('Using public URL for QR code. When testing locally, scanned QR codes will only work on the same device.', {
+        duration: 8000,
+      });
+    }
+    
     const url = getQRCodeUrl(baseUrl, qrCodeData.id);
     
     console.log('Generated QR code URL:', url);

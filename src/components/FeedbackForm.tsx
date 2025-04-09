@@ -36,8 +36,8 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
     
     incrementScan(qrCodeId);
     
-    // Analyze sentiment
-    const sentiment: SentimentType = analyzeSentiment(comment);
+    // Analyze sentiment based on BOTH rating and comment text
+    const sentiment: SentimentType = analyzeSentiment(comment, rating);
     
     // Create feedback object
     const feedback: Feedback = {

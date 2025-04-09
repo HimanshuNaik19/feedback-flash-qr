@@ -11,22 +11,62 @@ export type Feedback = {
   context: string;
 };
 
-// Basic sentiment analysis using keywords (in a real app, use NLP APIs)
-export const analyzeSentiment = (text: string): SentimentType => {
+// Enhanced sentiment analysis using both ratings and keywords
+export const analyzeSentiment = (text: string, rating: number): SentimentType => {
+  // First determine sentiment based on rating
+  let ratingBasedSentiment: SentimentType = 'neutral';
+  if (rating >= 4) ratingBasedSentiment = 'positive';
+  else if (rating <= 2) ratingBasedSentiment = 'negative';
+  
+  // If no comment was provided, use rating-based sentiment only
+  if (!text || text.trim() === '') {
+    return ratingBasedSentiment;
+  }
+  
+  // Expanded list of positive words
   const positiveWords = [
     'good', 'great', 'excellent', 'awesome', 'amazing', 'love', 'enjoy',
-    'fantastic', 'happy', 'best', 'perfect', 'recommend', 'satisfied', 'helpful'
+    'fantastic', 'happy', 'best', 'perfect', 'recommend', 'satisfied', 'helpful',
+    'outstanding', 'superb', 'wonderful', 'delightful', 'pleasant', 'impressive',
+    'exceptional', 'marvelous', 'brilliant', 'stellar', 'terrific', 'splendid',
+    'first-rate', 'top-notch', 'superior', 'incredible', 'fabulous', 'flawless',
+    'efficient', 'prompt', 'reliable', 'friendly', 'responsive', 'comfortable',
+    'beautiful', 'convenient', 'clean', 'innovative', 'valuable', 'intuitive',
+    'easy', 'smooth', 'fast', 'quick', 'inspiring', 'remarkable', 'impressive',
+    'thankful', 'grateful', 'pleased', 'delighted', 'thrilled', 'excited', 'glad',
+    'appreciative', 'refreshing', 'inviting', 'satisfying', 'appealing'
   ];
   
+  // Expanded list of negative words
   const negativeWords = [
     'bad', 'poor', 'terrible', 'awful', 'horrible', 'hate', 'dislike',
-    'worst', 'disappointed', 'slow', 'expensive', 'rude', 'dirty', 'broken'
+    'worst', 'disappointed', 'slow', 'expensive', 'rude', 'dirty', 'broken',
+    'frustrating', 'annoying', 'unpleasant', 'mediocre', 'inadequate', 'faulty',
+    'defective', 'subpar', 'useless', 'disappointing', 'dissatisfied', 'mess',
+    'problem', 'issue', 'inconvenient', 'uncomfortable', 'unhelpful', 'difficult',
+    'confusing', 'complicated', 'unreliable', 'buggy', 'glitchy', 'error',
+    'failure', 'failed', 'lacking', 'missing', 'overpriced', 'waste', 'inefficient',
+    'unsatisfactory', 'inferior', 'unacceptable', 'dreadful', 'pathetic', 'appalling',
+    'atrocious', 'abysmal', 'lousy', 'shoddy', 'sloppy', 'worthless', 'regret',
+    'bothered', 'upset', 'angry', 'furious', 'irritated', 'troubled', 'displeased',
+    'unfortunate', 'unwanted', 'offensive', 'sketchy', 'questionable'
+  ];
+  
+  // Expanded list of neutral words
+  const neutralWords = [
+    'okay', 'ok', 'fine', 'average', 'decent', 'satisfactory', 'fair',
+    'adequate', 'acceptable', 'standard', 'normal', 'regular', 'ordinary',
+    'moderate', 'mediocre', 'passable', 'tolerable', 'unexceptional',
+    'so-so', 'neither', 'mixed', 'balanced', 'typical', 'common',
+    'usual', 'expected', 'conventional', 'plain', 'vanilla', 'middle-of-the-road',
+    'intermediate', 'run-of-the-mill'
   ];
   
   const lowerText = text.toLowerCase();
   
   let positiveCount = 0;
   let negativeCount = 0;
+  let neutralCount = 0;
   
   positiveWords.forEach(word => {
     if (lowerText.includes(word)) positiveCount++;
@@ -36,9 +76,25 @@ export const analyzeSentiment = (text: string): SentimentType => {
     if (lowerText.includes(word)) negativeCount++;
   });
   
-  if (positiveCount > negativeCount) return 'positive';
-  if (negativeCount > positiveCount) return 'negative';
-  return 'neutral';
+  neutralWords.forEach(word => {
+    if (lowerText.includes(word)) neutralCount++;
+  });
+  
+  // Determine sentiment based on the word counts
+  let textBasedSentiment: SentimentType = 'neutral';
+  if (positiveCount > negativeCount) textBasedSentiment = 'positive';
+  else if (negativeCount > positiveCount) textBasedSentiment = 'negative';
+  
+  // Combine rating-based and text-based sentiment
+  // Give more weight to explicit text if there are significant keyword matches
+  const significantTextMatches = positiveCount > 2 || negativeCount > 2;
+  
+  if (significantTextMatches) {
+    return textBasedSentiment;
+  } else {
+    // Default to rating-based sentiment if text isn't strongly indicating otherwise
+    return ratingBasedSentiment;
+  }
 };
 
 // Determine color based on sentiment
