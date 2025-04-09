@@ -18,10 +18,14 @@ const FeedbackPage = () => {
     if (!id) {
       setIsValid(false);
       setValidationMessage('No QR code ID provided');
+      console.error('No QR code ID provided in URL');
       return;
     }
     
     console.log('Checking QR code validity for ID:', id);
+    console.log('Current URL path:', window.location.pathname);
+    console.log('Current URL:', window.location.href);
+    
     const qrCode = getQRCode(id);
     
     if (!qrCode) {
