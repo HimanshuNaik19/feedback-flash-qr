@@ -25,7 +25,8 @@ const FeedbackPage = () => {
     const qrCode = getQRCode(id);
     
     if (!qrCode) {
-      console.log('QR code not found in storage');
+      console.log('QR code not found in storage. ID:', id);
+      console.log('Available QR codes:', localStorage.getItem('qrCodes'));
       setIsValid(false);
       setValidationMessage('QR code not found. It may have been deleted or never existed.');
       return;

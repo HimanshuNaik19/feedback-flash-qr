@@ -25,31 +25,35 @@ const QRCodeGenerator = () => {
     const qrCodeData = generateQRCodeData(context, expiryHours, maxScans);
     storeQRCode(qrCodeData);
     
-    // Use the deployed URL if available or fallback to current URL
-    // For mobile devices, we need a fully qualified public URL
+    // For QR codes to work on mobile devices, we need a fully qualified public URL
+    // When testing locally, we'll use a placeholder URL for demonstration
     let baseUrl;
     
-    // First check if we're on a deployed Lovable domain
-    if (window.location.hostname.includes('lovable.app') || 
-        window.location.hostname.includes('lovableproject.com')) {
+    // Check if we're on a Netlify deployment
+    if (window.location.hostname.includes('netlify.app')) {
+      baseUrl = window.location.origin;
+    }
+    // Check if we're on a Lovable deployment
+    else if (window.location.hostname.includes('lovable.app') || 
+             window.location.hostname.includes('lovableproject.com')) {
       baseUrl = window.location.origin;
     } 
-    // Check if we might be on a production domain like Netlify or custom domain
+    // Check if we might be on any other production domain
     else if (!window.location.hostname.includes('localhost') && 
              !window.location.hostname.includes('127.0.0.1')) {
       baseUrl = window.location.origin;
     }
-    // If we're on localhost, we need to use a public URL since QR codes scanned on mobile
-    // won't be able to access localhost of a different device
+    // If we're on localhost, we need to provide a message that the QR code won't work on mobile
     else {
-      // Attempt to use the public URL of the deployed app if available
-      // This is a common pattern for deployments - adjust if using a different provider
-      baseUrl = 'https://feedback-flash-qr.lovable.app';
+      // For testing purposes, we can use a placeholder that clearly indicates the need for deployment
+      baseUrl = 'https://your-deployed-site.netlify.app';
       
-      // Show an informative toast that local QR codes won't work on different devices
-      toast.info('Using public URL for QR code. When testing locally, scanned QR codes will only work on the same device.', {
-        duration: 8000,
-      });
+      toast.warning(
+        'You are on localhost. The QR code is using a placeholder URL and won\'t work on mobile devices until you deploy the app.',
+        { duration: 8000 }
+      );
+      
+      console.log('Using placeholder URL for local development. Deploy the app for working QR codes.');
     }
     
     const url = getQRCodeUrl(baseUrl, qrCodeData.id);
@@ -107,6 +111,11 @@ const QRCodeGenerator = () => {
             <p className="text-sm text-center mt-2 text-muted-foreground break-all">
               {qrCodeUrl}
             </p>
+            <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-md">
+              <p className="text-sm text-amber-800">
+                <strong>Note:</strong> Your QR code needs to be accessible from the internet to work on mobile devices. Deploy your app to make the QR codes fully functional.
+              </p>
+            </div>
           </div>
         )}
       </CardContent>
