@@ -15,6 +15,12 @@ const FeedbackPage = () => {
   const [validationMessage, setValidationMessage] = useState<string>('');
   
   useEffect(() => {
+    // Log for debugging - helps identify issues on mobile
+    console.log('FeedbackPage mounted');
+    console.log('Browser info:', navigator.userAgent);
+    console.log('Current URL:', window.location.href);
+    console.log('QR code ID from params:', id);
+    
     if (!id) {
       setIsValid(false);
       setValidationMessage('No QR code ID provided');
@@ -26,6 +32,7 @@ const FeedbackPage = () => {
     console.log('Current URL path:', window.location.pathname);
     console.log('Current URL:', window.location.href);
     
+    // Try to retrieve the QR code
     const qrCode = getQRCode(id);
     
     if (!qrCode) {
@@ -33,6 +40,21 @@ const FeedbackPage = () => {
       console.log('Available QR codes:', localStorage.getItem('qrCodes'));
       setIsValid(false);
       setValidationMessage('QR code not found. It may have been deleted or never existed.');
+      
+      // More detailed error for debugging
+      try {
+        const allStorage = {};
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key) {
+            allStorage[key] = localStorage.getItem(key);
+          }
+        }
+        console.log('All localStorage items:', allStorage);
+      } catch (e) {
+        console.error('Error inspecting localStorage:', e);
+      }
+      
       return;
     }
     
@@ -67,6 +89,7 @@ const FeedbackPage = () => {
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50">
         <div className="animate-pulse text-center">
           <p className="text-lg">Loading...</p>
+          <p className="text-sm text-muted-foreground mt-2">Checking QR code: {id}</p>
         </div>
       </div>
     );

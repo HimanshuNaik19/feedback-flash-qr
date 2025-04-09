@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 
 export type QRCodeContext = {
@@ -67,7 +66,12 @@ export const getQRCodeUrl = (baseUrl: string, qrCodeId: string): string => {
   // Ensure we're creating an absolute URL that works across devices
   // Remove any trailing slashes from the baseUrl
   const cleanBaseUrl = baseUrl.replace(/\/$/, '');
-  return `${cleanBaseUrl}/feedback/${qrCodeId}`;
+  
+  // Ensure the URL is properly constructed with the feedback path
+  const url = `${cleanBaseUrl}/feedback/${qrCodeId}`;
+  console.log('Generated QR code URL:', url);
+  
+  return url;
 };
 
 // Load stored QR codes from localStorage
