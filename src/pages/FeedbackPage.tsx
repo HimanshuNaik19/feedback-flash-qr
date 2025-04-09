@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getQRCode, isQRCodeValid, incrementScan } from '@/utils/qrCodeUtils';
+import { getQRCode, isQRCodeValid } from '@/utils/qrCodeUtils';
 import FeedbackForm from '@/components/FeedbackForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle } from 'lucide-react';
@@ -34,10 +34,7 @@ const FeedbackPage = () => {
     console.log('QR code found:', qrCode);
     const valid = isQRCodeValid(qrCode);
     
-    if (valid) {
-      // Only increment scan count if the QR code is valid
-      incrementScan(id);
-    } else {
+    if (!valid) {
       // Set appropriate validation message based on why it's invalid
       if (new Date() > new Date(qrCode.expiresAt)) {
         setValidationMessage('This QR code has expired.');

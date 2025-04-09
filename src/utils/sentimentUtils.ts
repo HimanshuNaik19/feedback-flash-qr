@@ -63,21 +63,55 @@ export const getRatingEmoji = (rating: number): string => {
   }
 };
 
-// Mock data store for feedback
-const feedbackStore: Feedback[] = [];
+// Load saved feedback from localStorage
+const loadStoredFeedback = (): Feedback[] => {
+  try {
+    const storedData = localStorage.getItem('feedback');
+    if (storedData) {
+      return JSON.parse(storedData);
+    }
+  } catch (error) {
+    console.error('Error loading stored feedback:', error);
+  }
+  return [];
+};
+
+// Save feedback to localStorage
+const saveFeedbackToStorage = (feedback: Feedback[]) => {
+  try {
+    localStorage.setItem('feedback', JSON.stringify(feedback));
+    console.log('Feedback saved to storage, count:', feedback.length);
+  } catch (error) {
+    console.error('Error saving feedback to storage:', error);
+  }
+};
+
+// Initialize feedback array from localStorage
+let feedbackStore: Feedback[] = loadStoredFeedback();
 
 export const storeFeedback = (feedback: Feedback): void => {
+  console.log('Storing feedback:', feedback);
+  // Always reload from localStorage first to ensure we have the latest data
+  feedbackStore = loadStoredFeedback();
   feedbackStore.push(feedback);
+  saveFeedbackToStorage(feedbackStore);
 };
 
 export const getFeedbackById = (id: string): Feedback | undefined => {
+  // Always reload from localStorage first to ensure we have the latest data
+  feedbackStore = loadStoredFeedback();
   return feedbackStore.find(f => f.id === id);
 };
 
 export const getFeedbackByQRCodeId = (qrCodeId: string): Feedback[] => {
+  // Always reload from localStorage first to ensure we have the latest data
+  feedbackStore = loadStoredFeedback();
   return feedbackStore.filter(f => f.qrCodeId === qrCodeId);
 };
 
 export const getAllFeedback = (): Feedback[] => {
+  // Always reload from localStorage first to ensure we have the latest data
+  feedbackStore = loadStoredFeedback();
+  console.log('Getting all feedback, count:', feedbackStore.length);
   return [...feedbackStore];
 };

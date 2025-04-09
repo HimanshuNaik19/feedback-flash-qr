@@ -25,10 +25,12 @@ const QRCodeGenerator = () => {
     const qrCodeData = generateQRCodeData(context, expiryHours, maxScans);
     storeQRCode(qrCodeData);
     
-    // In a real app, this would be the full URL of your deployed app
+    // Use the full window.location.origin to ensure we have an absolute URL
+    // that works across devices
     const baseUrl = window.location.origin;
     const url = getQRCodeUrl(baseUrl, qrCodeData.id);
     
+    console.log('Generated QR code URL:', url);
     setQrCodeUrl(url);
     setGeneratedQRCode(JSON.stringify(qrCodeData));
     toast.success('QR Code generated successfully!');

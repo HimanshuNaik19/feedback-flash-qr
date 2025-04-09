@@ -64,7 +64,10 @@ export const isQRCodeValid = (qrCode: QRCodeContext): boolean => {
 };
 
 export const getQRCodeUrl = (baseUrl: string, qrCodeId: string): string => {
-  return `${baseUrl}/feedback/${qrCodeId}`;
+  // Ensure we're creating an absolute URL that works across devices
+  // Remove any trailing slashes from the baseUrl
+  const cleanBaseUrl = baseUrl.replace(/\/$/, '');
+  return `${cleanBaseUrl}/feedback/${qrCodeId}`;
 };
 
 // Load stored QR codes from localStorage
@@ -84,6 +87,7 @@ const loadStoredQRCodes = (): Record<string, QRCodeContext> => {
 const saveQRCodesToStorage = (qrCodes: Record<string, QRCodeContext>) => {
   try {
     localStorage.setItem('qrCodes', JSON.stringify(qrCodes));
+    console.log('QR codes saved to storage:', Object.keys(qrCodes).length);
   } catch (error) {
     console.error('Error saving QR codes to storage:', error);
   }
@@ -101,24 +105,25 @@ export const storeQRCode = (qrCode: QRCodeContext): void => {
 };
 
 export const getQRCode = (id: string): QRCodeContext | null => {
-  // Reload from localStorage to ensure we have the latest data
+  // Always reload from localStorage to ensure we have the latest data
   storedQRCodes = loadStoredQRCodes();
   
-  // Add logging to debug retrieval
   console.log('Retrieving QR code with ID:', id);
+  console.log('Available QR codes:', Object.keys(storedQRCodes));
+  
   const qrCode = storedQRCodes[id] || null;
   console.log('Retrieved QR code:', qrCode);
   return qrCode;
 };
 
 export const getAllQRCodes = (): QRCodeContext[] => {
-  // Reload from localStorage to ensure we have the latest data
+  // Always reload from localStorage to ensure we have the latest data
   storedQRCodes = loadStoredQRCodes();
   return Object.values(storedQRCodes);
 };
 
 export const incrementScan = (id: string): QRCodeContext | null => {
-  // Reload from localStorage to ensure we have the latest data
+  // Always reload from localStorage to ensure we have the latest data
   storedQRCodes = loadStoredQRCodes();
   
   const qrCode = storedQRCodes[id];
@@ -130,7 +135,7 @@ export const incrementScan = (id: string): QRCodeContext | null => {
 };
 
 export const updateQRCode = (id: string, updates: Partial<QRCodeContext>): QRCodeContext | null => {
-  // Reload from localStorage to ensure we have the latest data
+  // Always reload from localStorage to ensure we have the latest data
   storedQRCodes = loadStoredQRCodes();
   
   const qrCode = storedQRCodes[id];
@@ -145,7 +150,7 @@ export const updateQRCode = (id: string, updates: Partial<QRCodeContext>): QRCod
 };
 
 export const deleteQRCode = (id: string): boolean => {
-  // Reload from localStorage to ensure we have the latest data
+  // Always reload from localStorage to ensure we have the latest data
   storedQRCodes = loadStoredQRCodes();
   
   if (!storedQRCodes[id]) return false;
@@ -155,4 +160,3 @@ export const deleteQRCode = (id: string): boolean => {
   
   return true;
 };
-

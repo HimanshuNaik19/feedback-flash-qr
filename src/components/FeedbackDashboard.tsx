@@ -12,8 +12,9 @@ const FeedbackDashboard = () => {
   const [selectedTab, setSelectedTab] = useState('all');
   
   const loadFeedbackData = () => {
-    // In a real app, this would fetch data from an API
+    // Get the latest feedback data from localStorage
     const feedback = getAllFeedback();
+    console.log('Loaded feedback data:', feedback.length, 'items');
     setFeedbackItems(feedback);
   };
   
@@ -21,10 +22,10 @@ const FeedbackDashboard = () => {
     // Load initial data
     loadFeedbackData();
     
-    // Set up polling for real-time updates (every 3 seconds)
+    // Set up polling for real-time updates (every 2 seconds)
     const intervalId = setInterval(() => {
       loadFeedbackData();
-    }, 3000);
+    }, 2000);
     
     return () => clearInterval(intervalId);
   }, []);
