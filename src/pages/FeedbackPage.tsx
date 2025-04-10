@@ -15,6 +15,7 @@ const FeedbackPage = () => {
   const [submitted, setSubmitted] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string>('');
   const [retries, setRetries] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
     // Enhanced logging for debugging
@@ -27,77 +28,53 @@ const FeedbackPage = () => {
       isMobile: /Mobi|Android/i.test(navigator.userAgent)
     });
     
-    const validateQRCode = () => {
+    const validateQRCode = async () => {
+      setIsLoading(true);
+      
       if (!id) {
         setIsValid(false);
         setValidationMessage('No QR code ID provided');
         console.error('No QR code ID provided in URL');
+        setIsLoading(false);
         return;
       }
       
-      // Try to retrieve the QR code
-      const qrCode = getQRCode(id);
-      
-      if (!qrCode) {
-        console.log('QR code not found in storage. ID:', id);
-        try {
-          // Show all stored QR codes for debugging
-          console.log('Available localStorage keys:', Object.keys(localStorage));
-          
-          // Check if any key contains 'qrCodes'
-          const qrCodeRelatedKeys = Object.keys(localStorage).filter(key => 
-            key.includes('qrCodes') || key.includes('QR')
-          );
-          console.log('QR code related localStorage keys:', qrCodeRelatedKeys);
-          
-          // Try to access each potential QR code storage
-          qrCodeRelatedKeys.forEach(key => {
-            try {
-              const value = localStorage.getItem(key);
-              console.log(`Content of ${key}:`, value ? value.substring(0, 100) + '...' : 'null');
-              
-              // Try to parse if it looks like JSON
-              if (value && value.startsWith('{')) {
-                const parsed = JSON.parse(value);
-                console.log(`Parsed ${key}:`, Object.keys(parsed));
-                
-                // Check if this storage contains our QR code
-                if (parsed[id]) {
-                  console.log('Found QR code in alternative storage!', parsed[id]);
-                }
-              }
-            } catch (e) {
-              console.error(`Error examining ${key}:`, e);
-            }
-          });
-        } catch (e) {
-          console.error('Error inspecting localStorage:', e);
+      try {
+        // Try to retrieve the QR code
+        const qrCode = await getQRCode(id);
+        
+        if (!qrCode) {
+          console.log('QR code not found in storage. ID:', id);
+          setIsValid(false);
+          setValidationMessage('QR code not found. It may have been deleted or never existed.');
+          setIsLoading(false);
+          return;
         }
         
-        setIsValid(false);
-        setValidationMessage('QR code not found. It may have been deleted or never existed.');
-        return;
-      }
-      
-      console.log('QR code found:', qrCode);
-      const valid = isQRCodeValid(qrCode);
-      
-      if (valid) {
-        // Increment the scan count
-        incrementScan(id);
-        setContext(qrCode.context);
-      } else {
-        // Set appropriate validation message based on why it's invalid
-        if (new Date() > new Date(qrCode.expiresAt)) {
-          setValidationMessage('This QR code has expired.');
-        } else if (qrCode.currentScans >= qrCode.maxScans) {
-          setValidationMessage('This QR code has reached its maximum number of scans.');
-        } else if (!qrCode.isActive) {
-          setValidationMessage('This QR code has been deactivated.');
+        console.log('QR code found:', qrCode);
+        const valid = isQRCodeValid(qrCode);
+        
+        if (valid) {
+          setContext(qrCode.context);
+        } else {
+          // Set appropriate validation message based on why it's invalid
+          if (new Date() > new Date(qrCode.expiresAt)) {
+            setValidationMessage('This QR code has expired.');
+          } else if (qrCode.currentScans >= qrCode.maxScans) {
+            setValidationMessage('This QR code has reached its maximum number of scans.');
+          } else if (!qrCode.isActive) {
+            setValidationMessage('This QR code has been deactivated.');
+          }
         }
+        
+        setIsValid(valid);
+      } catch (error) {
+        console.error('Error validating QR code:', error);
+        setIsValid(false);
+        setValidationMessage('An error occurred while validating the QR code.');
+      } finally {
+        setIsLoading(false);
       }
-      
-      setIsValid(valid);
     };
     
     validateQRCode();
@@ -115,7 +92,7 @@ const FeedbackPage = () => {
     setRetries(prev => prev + 1);
   };
   
-  if (isValid === null) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gray-50">
         <div className="animate-pulse text-center">

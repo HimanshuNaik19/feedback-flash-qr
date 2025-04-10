@@ -8,7 +8,7 @@ import { Slider } from '@/components/ui/slider';
 import { generateQRCodeData, storeQRCode, getQRCodeUrl } from '@/utils/qrCodeUtils';
 import QRCodeDisplay from './QRCodeDisplay';
 import { toast } from 'sonner';
-import { Copy, Share2 } from 'lucide-react';
+import { Copy, Share2, Loader2 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const QRCodeGenerator = () => {
@@ -18,6 +18,7 @@ const QRCodeGenerator = () => {
   const [generatedQRCode, setGeneratedQRCode] = useState<string | null>(null);
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [deployedUrl, setDeployedUrl] = useState<string>('');
+  const [isGenerating, setIsGenerating] = useState(false);
   const urlInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
   
@@ -31,22 +32,31 @@ const QRCodeGenerator = () => {
     console.log('Is mobile detected:', isMobile);
   }, [isMobile]);
   
-  const handleGenerateQRCode = () => {
+  const handleGenerateQRCode = async () => {
     if (!context) {
       toast.error('Please enter a context for the QR code');
       return;
     }
     
-    const qrCodeData = generateQRCodeData(context, expiryHours, maxScans);
-    storeQRCode(qrCodeData);
+    setIsGenerating(true);
     
-    // Use the detected deployment URL for the QR code
-    const url = getQRCodeUrl(deployedUrl, qrCodeData.id);
-    
-    console.log('Generated QR code with absolute URL:', url);
-    setQrCodeUrl(url);
-    setGeneratedQRCode(JSON.stringify(qrCodeData));
-    toast.success('QR Code generated successfully!');
+    try {
+      const qrCodeData = generateQRCodeData(context, expiryHours, maxScans);
+      await storeQRCode(qrCodeData);
+      
+      // Use the detected deployment URL for the QR code
+      const url = getQRCodeUrl(deployedUrl, qrCodeData.id);
+      
+      console.log('Generated QR code with absolute URL:', url);
+      setQrCodeUrl(url);
+      setGeneratedQRCode(JSON.stringify(qrCodeData));
+      toast.success('QR Code generated successfully!');
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      toast.error('Failed to generate QR code. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
   
   const copyToClipboard = () => {
@@ -153,7 +163,7 @@ const QRCodeGenerator = () => {
             
             <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-md">
               <p className="text-sm text-amber-800">
-                <strong>Note:</strong> This QR code is generated for: {deployedUrl}
+                <strong>Note:</strong> This QR code is now stored in the cloud and can be accessed from any device.
                 <br />
                 {isMobile ? (
                   <>
@@ -161,7 +171,7 @@ const QRCodeGenerator = () => {
                   </>
                 ) : (
                   <>
-                    If scanning with a mobile device, make sure the URL is accessible from that device.
+                    You can scan this QR code with any device, or share the link directly.
                   </>
                 )}
               </p>
@@ -173,8 +183,16 @@ const QRCodeGenerator = () => {
         <Button 
           className="w-full bg-feedback-blue hover:bg-feedback-darkblue" 
           onClick={handleGenerateQRCode}
+          disabled={isGenerating}
         >
-          Generate QR Code
+          {isGenerating ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Generating...
+            </>
+          ) : (
+            'Generate QR Code'
+          )}
         </Button>
         
         {generatedQRCode && qrCodeUrl && (

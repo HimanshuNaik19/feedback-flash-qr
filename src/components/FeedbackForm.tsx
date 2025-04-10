@@ -1,10 +1,10 @@
+
 import { useState } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Feedback, analyzeSentiment, saveFeedback, getRatingEmoji } from '@/utils/sentimentUtils';
-import { incrementScan, getQRCode } from '@/utils/qrCodeUtils';
+import { getQRCode, incrementScan } from '@/utils/qrCodeUtils';
 import { toast } from 'sonner';
 
 interface FeedbackFormProps {
@@ -17,7 +17,7 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (rating === null) {
       toast.error('Please select a rating');
       return;
@@ -25,41 +25,44 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
     
     setIsSubmitting(true);
     
-    // Get QR code details and increment scan counter
-    const qrCode = getQRCode(qrCodeId);
-    if (!qrCode) {
-      toast.error('Invalid QR code');
+    try {
+      // Get QR code details and increment scan counter
+      const qrCode = await getQRCode(qrCodeId);
+      if (!qrCode) {
+        toast.error('Invalid QR code');
+        setIsSubmitting(false);
+        return;
+      }
+      
+      await incrementScan(qrCodeId);
+      
+      // Create feedback object
+      const feedback: Omit<Feedback, 'id' | 'createdAt' | 'sentiment'> = {
+        qrCodeId,
+        rating: rating as 1 | 2 | 3 | 4 | 5,
+        comment,
+        context: qrCode.context
+      };
+      
+      // Store feedback
+      await saveFeedback(feedback);
+      
+      // Show success message
+      toast.success('Thank you for your feedback!');
+      
+      // Reset form
+      setRating(null);
+      setComment('');
+      
+      // Call success callback if provided
+      if (onSubmitSuccess) {
+        onSubmitSuccess();
+      }
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      toast.error('Failed to submit feedback. Please try again.');
+    } finally {
       setIsSubmitting(false);
-      return;
-    }
-    
-    incrementScan(qrCodeId);
-    
-    // Analyze sentiment based on rating
-    const sentiment = analyzeSentiment(rating as 1 | 2 | 3 | 4 | 5);
-    
-    // Create feedback object
-    const feedback: Omit<Feedback, 'id' | 'createdAt' | 'sentiment'> = {
-      qrCodeId,
-      rating: rating as 1 | 2 | 3 | 4 | 5,
-      comment,
-      context: qrCode.context
-    };
-    
-    // Store feedback
-    saveFeedback(feedback);
-    
-    // Show success message
-    toast.success('Thank you for your feedback!');
-    
-    // Reset form
-    setRating(null);
-    setComment('');
-    setIsSubmitting(false);
-    
-    // Call success callback if provided
-    if (onSubmitSuccess) {
-      onSubmitSuccess();
     }
   };
   
