@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getQRCode, isQRCodeValid } from '@/utils/qrCodeUtils';
+import { getQRCode, isQRCodeValid, incrementScan } from '@/utils/qrCodeUtils';
 import FeedbackForm from '@/components/FeedbackForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AlertCircle, RefreshCcw } from 'lucide-react';
@@ -23,7 +23,8 @@ const FeedbackPage = () => {
       retries,
       localStorage: Object.keys(localStorage),
       url: window.location.href,
-      userAgent: navigator.userAgent
+      userAgent: navigator.userAgent,
+      isMobile: /Mobi|Android/i.test(navigator.userAgent)
     });
     
     const validateQRCode = () => {
@@ -41,18 +42,34 @@ const FeedbackPage = () => {
         console.log('QR code not found in storage. ID:', id);
         try {
           // Show all stored QR codes for debugging
-          const storedCodes = localStorage.getItem('qrCodes');
-          console.log('Available QR codes in storage:', storedCodes);
+          console.log('Available localStorage keys:', Object.keys(localStorage));
           
-          // Check other storage items
-          const allStorage = {};
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key) {
-              allStorage[key] = localStorage.getItem(key);
+          // Check if any key contains 'qrCodes'
+          const qrCodeRelatedKeys = Object.keys(localStorage).filter(key => 
+            key.includes('qrCodes') || key.includes('QR')
+          );
+          console.log('QR code related localStorage keys:', qrCodeRelatedKeys);
+          
+          // Try to access each potential QR code storage
+          qrCodeRelatedKeys.forEach(key => {
+            try {
+              const value = localStorage.getItem(key);
+              console.log(`Content of ${key}:`, value ? value.substring(0, 100) + '...' : 'null');
+              
+              // Try to parse if it looks like JSON
+              if (value && value.startsWith('{')) {
+                const parsed = JSON.parse(value);
+                console.log(`Parsed ${key}:`, Object.keys(parsed));
+                
+                // Check if this storage contains our QR code
+                if (parsed[id]) {
+                  console.log('Found QR code in alternative storage!', parsed[id]);
+                }
+              }
+            } catch (e) {
+              console.error(`Error examining ${key}:`, e);
             }
-          }
-          console.log('All localStorage items:', allStorage);
+          });
         } catch (e) {
           console.error('Error inspecting localStorage:', e);
         }
@@ -65,7 +82,11 @@ const FeedbackPage = () => {
       console.log('QR code found:', qrCode);
       const valid = isQRCodeValid(qrCode);
       
-      if (!valid) {
+      if (valid) {
+        // Increment the scan count
+        incrementScan(id);
+        setContext(qrCode.context);
+      } else {
         // Set appropriate validation message based on why it's invalid
         if (new Date() > new Date(qrCode.expiresAt)) {
           setValidationMessage('This QR code has expired.');
@@ -77,7 +98,6 @@ const FeedbackPage = () => {
       }
       
       setIsValid(valid);
-      setContext(qrCode.context);
     };
     
     validateQRCode();

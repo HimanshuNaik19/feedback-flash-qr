@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 
 export type QRCodeContext = {
@@ -9,6 +10,9 @@ export type QRCodeContext = {
   currentScans: number;
   isActive: boolean;
 };
+
+// Use a consistent storage prefix for all QR codes
+const STORAGE_KEY = 'qrCodes_v2';
 
 export const generateQRCodeData = (
   context: string, 
@@ -83,10 +87,30 @@ export const getQRCodeUrl = (baseUrl: string, qrCodeId: string): string => {
   return url;
 };
 
+// Enhanced localStorage compatibility for different browsers and contexts
+const getStorageData = (key: string): string | null => {
+  try {
+    return localStorage.getItem(key);
+  } catch (e) {
+    console.error('Error accessing localStorage:', e);
+    return null;
+  }
+};
+
+const setStorageData = (key: string, value: string): boolean => {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch (e) {
+    console.error('Error writing to localStorage:', e);
+    return false;
+  }
+};
+
 // Load stored QR codes from localStorage with error handling
 const loadStoredQRCodes = (): Record<string, QRCodeContext> => {
   try {
-    const storedData = localStorage.getItem('qrCodes');
+    const storedData = getStorageData(STORAGE_KEY);
     if (storedData) {
       const parsed = JSON.parse(storedData);
       console.log('Successfully loaded QR codes from storage:', Object.keys(parsed).length);
@@ -97,7 +121,7 @@ const loadStoredQRCodes = (): Record<string, QRCodeContext> => {
     
     // Try to recover corrupted data
     try {
-      localStorage.removeItem('qrCodes');
+      localStorage.removeItem(STORAGE_KEY);
       console.log('Removed potentially corrupted QR codes data');
     } catch (e) {
       console.error('Failed to remove corrupted data:', e);
@@ -110,14 +134,15 @@ const loadStoredQRCodes = (): Record<string, QRCodeContext> => {
 const saveQRCodesToStorage = (qrCodes: Record<string, QRCodeContext>) => {
   try {
     const jsonString = JSON.stringify(qrCodes);
-    localStorage.setItem('qrCodes', jsonString);
+    setStorageData(STORAGE_KEY, jsonString);
     console.log('QR codes saved to storage:', {
       count: Object.keys(qrCodes).length,
-      size: jsonString.length + ' bytes'
+      size: jsonString.length + ' bytes',
+      storageKey: STORAGE_KEY
     });
     
     // Verify the save was successful
-    const verification = localStorage.getItem('qrCodes');
+    const verification = getStorageData(STORAGE_KEY);
     if (!verification) {
       console.error('Verification failed: QR codes not found after saving');
     }
@@ -136,9 +161,10 @@ const saveQRCodesToStorage = (qrCodes: Record<string, QRCodeContext>) => {
 // Create a test entry to verify localStorage works
 const testLocalStorage = () => {
   try {
-    localStorage.setItem('test-storage', 'test');
-    const testValue = localStorage.getItem('test-storage');
-    localStorage.removeItem('test-storage');
+    const testKey = 'test-storage-' + Date.now();
+    localStorage.setItem(testKey, 'test');
+    const testValue = localStorage.getItem(testKey);
+    localStorage.removeItem(testKey);
     return testValue === 'test';
   } catch (e) {
     console.error('LocalStorage test failed:', e);
@@ -225,3 +251,4 @@ export const deleteQRCode = (id: string): boolean => {
   
   return true;
 };
+

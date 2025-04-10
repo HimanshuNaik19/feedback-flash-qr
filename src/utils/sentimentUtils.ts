@@ -1,173 +1,109 @@
 
-export type SentimentType = 'positive' | 'neutral' | 'negative';
+// Adding feedback deletion functionality to sentimentUtils.ts
 
-export type Feedback = {
+export interface Feedback {
   id: string;
   qrCodeId: string;
-  rating: number; // 1-5
-  comment: string;
-  sentiment: SentimentType;
-  createdAt: string;
   context: string;
-};
+  rating: 1 | 2 | 3 | 4 | 5;
+  comment: string;
+  sentiment: 'positive' | 'neutral' | 'negative';
+  createdAt: string;
+}
 
-// Enhanced sentiment analysis using both ratings and keywords
-export const analyzeSentiment = (text: string, rating: number): SentimentType => {
-  // First determine sentiment based on rating
-  let ratingBasedSentiment: SentimentType = 'neutral';
-  if (rating >= 4) ratingBasedSentiment = 'positive';
-  else if (rating <= 2) ratingBasedSentiment = 'negative';
-  
-  // If no comment was provided, use rating-based sentiment only
-  if (!text || text.trim() === '') {
-    return ratingBasedSentiment;
-  }
-  
-  // Expanded list of positive words
-  const positiveWords = [
-    'good', 'great', 'excellent', 'awesome', 'amazing', 'love', 'enjoy',
-    'fantastic', 'happy', 'best', 'perfect', 'recommend', 'satisfied', 'helpful',
-    'outstanding', 'superb', 'wonderful', 'delightful', 'pleasant', 'impressive',
-    'exceptional', 'marvelous', 'brilliant', 'stellar', 'terrific', 'splendid',
-    'first-rate', 'top-notch', 'superior', 'incredible', 'fabulous', 'flawless',
-    'efficient', 'prompt', 'reliable', 'friendly', 'responsive', 'comfortable',
-    'beautiful', 'convenient', 'clean', 'innovative', 'valuable', 'intuitive',
-    'easy', 'smooth', 'fast', 'quick', 'inspiring', 'remarkable', 'impressive',
-    'thankful', 'grateful', 'pleased', 'delighted', 'thrilled', 'excited', 'glad',
-    'appreciative', 'refreshing', 'inviting', 'satisfying', 'appealing'
-  ];
-  
-  // Expanded list of negative words
-  const negativeWords = [
-    'bad', 'poor', 'terrible', 'awful', 'horrible', 'hate', 'dislike',
-    'worst', 'disappointed', 'slow', 'expensive', 'rude', 'dirty', 'broken',
-    'frustrating', 'annoying', 'unpleasant', 'mediocre', 'inadequate', 'faulty',
-    'defective', 'subpar', 'useless', 'disappointing', 'dissatisfied', 'mess',
-    'problem', 'issue', 'inconvenient', 'uncomfortable', 'unhelpful', 'difficult',
-    'confusing', 'complicated', 'unreliable', 'buggy', 'glitchy', 'error',
-    'failure', 'failed', 'lacking', 'missing', 'overpriced', 'waste', 'inefficient',
-    'unsatisfactory', 'inferior', 'unacceptable', 'dreadful', 'pathetic', 'appalling',
-    'atrocious', 'abysmal', 'lousy', 'shoddy', 'sloppy', 'worthless', 'regret',
-    'bothered', 'upset', 'angry', 'furious', 'irritated', 'troubled', 'displeased',
-    'unfortunate', 'unwanted', 'offensive', 'sketchy', 'questionable'
-  ];
-  
-  // Expanded list of neutral words
-  const neutralWords = [
-    'okay', 'ok', 'fine', 'average', 'decent', 'satisfactory', 'fair',
-    'adequate', 'acceptable', 'standard', 'normal', 'regular', 'ordinary',
-    'moderate', 'mediocre', 'passable', 'tolerable', 'unexceptional',
-    'so-so', 'neither', 'mixed', 'balanced', 'typical', 'common',
-    'usual', 'expected', 'conventional', 'plain', 'vanilla', 'middle-of-the-road',
-    'intermediate', 'run-of-the-mill'
-  ];
-  
-  const lowerText = text.toLowerCase();
-  
-  let positiveCount = 0;
-  let negativeCount = 0;
-  let neutralCount = 0;
-  
-  positiveWords.forEach(word => {
-    if (lowerText.includes(word)) positiveCount++;
-  });
-  
-  negativeWords.forEach(word => {
-    if (lowerText.includes(word)) negativeCount++;
-  });
-  
-  neutralWords.forEach(word => {
-    if (lowerText.includes(word)) neutralCount++;
-  });
-  
-  // Determine sentiment based on the word counts
-  let textBasedSentiment: SentimentType = 'neutral';
-  if (positiveCount > negativeCount) textBasedSentiment = 'positive';
-  else if (negativeCount > positiveCount) textBasedSentiment = 'negative';
-  
-  // Combine rating-based and text-based sentiment
-  // Give more weight to explicit text if there are significant keyword matches
-  const significantTextMatches = positiveCount > 2 || negativeCount > 2;
-  
-  if (significantTextMatches) {
-    return textBasedSentiment;
-  } else {
-    // Default to rating-based sentiment if text isn't strongly indicating otherwise
-    return ratingBasedSentiment;
-  }
-};
+const FEEDBACK_STORAGE_KEY = 'feedbackItems';
 
-// Determine color based on sentiment
-export const getSentimentColor = (sentiment: SentimentType): string => {
+export const getSentimentColor = (sentiment: string): string => {
   switch (sentiment) {
-    case 'positive': return 'bg-feedback-positive';
-    case 'negative': return 'bg-feedback-negative';
-    case 'neutral': return 'bg-feedback-neutral';
-    default: return 'bg-gray-300';
+    case 'positive':
+      return 'bg-green-500';
+    case 'neutral':
+      return 'bg-blue-500';
+    case 'negative':
+      return 'bg-red-500';
+    default:
+      return 'bg-gray-500';
   }
 };
 
-// Determine emoji based on rating
 export const getRatingEmoji = (rating: number): string => {
   switch (rating) {
-    case 1: return '😡';
-    case 2: return '😕';
+    case 1: return '😠';
+    case 2: return '😟';
     case 3: return '😐';
     case 4: return '🙂';
-    case 5: return '😄';
+    case 5: return '😁';
     default: return '❓';
   }
 };
 
-// Load saved feedback from localStorage
-const loadStoredFeedback = (): Feedback[] => {
+export const analyzeSentiment = (rating: number): 'positive' | 'neutral' | 'negative' => {
+  if (rating >= 4) return 'positive';
+  if (rating === 3) return 'neutral';
+  return 'negative';
+};
+
+export const saveFeedback = (feedback: Omit<Feedback, 'id' | 'createdAt' | 'sentiment'>): Feedback => {
+  const id = crypto.randomUUID();
+  const createdAt = new Date().toISOString();
+  const sentiment = analyzeSentiment(feedback.rating);
+  
+  const newFeedback: Feedback = {
+    id,
+    createdAt,
+    sentiment,
+    ...feedback
+  };
+  
+  // Get existing feedback
+  const existingFeedback = getAllFeedback();
+  const updatedFeedback = [...existingFeedback, newFeedback];
+  
+  // Save to localStorage
+  localStorage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify(updatedFeedback));
+  
+  return newFeedback;
+};
+
+export const getAllFeedback = (): Feedback[] => {
   try {
-    const storedData = localStorage.getItem('feedback');
-    if (storedData) {
-      return JSON.parse(storedData);
+    const storedFeedback = localStorage.getItem(FEEDBACK_STORAGE_KEY);
+    if (storedFeedback) {
+      const parsedFeedback = JSON.parse(storedFeedback);
+      console.log('Getting all feedback, count:', parsedFeedback.length);
+      return parsedFeedback;
     }
   } catch (error) {
-    console.error('Error loading stored feedback:', error);
+    console.error('Error getting feedback from storage:', error);
   }
   return [];
 };
 
-// Save feedback to localStorage
-const saveFeedbackToStorage = (feedback: Feedback[]) => {
+export const deleteFeedback = (id: string): boolean => {
   try {
-    localStorage.setItem('feedback', JSON.stringify(feedback));
-    console.log('Feedback saved to storage, count:', feedback.length);
+    const existingFeedback = getAllFeedback();
+    const updatedFeedback = existingFeedback.filter(item => item.id !== id);
+    
+    // If no items were removed, return false
+    if (updatedFeedback.length === existingFeedback.length) {
+      return false;
+    }
+    
+    // Save updated list to localStorage
+    localStorage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify(updatedFeedback));
+    return true;
   } catch (error) {
-    console.error('Error saving feedback to storage:', error);
+    console.error('Error deleting feedback:', error);
+    return false;
   }
 };
 
-// Initialize feedback array from localStorage
-let feedbackStore: Feedback[] = loadStoredFeedback();
-
-export const storeFeedback = (feedback: Feedback): void => {
-  console.log('Storing feedback:', feedback);
-  // Always reload from localStorage first to ensure we have the latest data
-  feedbackStore = loadStoredFeedback();
-  feedbackStore.push(feedback);
-  saveFeedbackToStorage(feedbackStore);
-};
-
-export const getFeedbackById = (id: string): Feedback | undefined => {
-  // Always reload from localStorage first to ensure we have the latest data
-  feedbackStore = loadStoredFeedback();
-  return feedbackStore.find(f => f.id === id);
-};
-
-export const getFeedbackByQRCodeId = (qrCodeId: string): Feedback[] => {
-  // Always reload from localStorage first to ensure we have the latest data
-  feedbackStore = loadStoredFeedback();
-  return feedbackStore.filter(f => f.qrCodeId === qrCodeId);
-};
-
-export const getAllFeedback = (): Feedback[] => {
-  // Always reload from localStorage first to ensure we have the latest data
-  feedbackStore = loadStoredFeedback();
-  console.log('Getting all feedback, count:', feedbackStore.length);
-  return [...feedbackStore];
+export const deleteAllFeedback = (): boolean => {
+  try {
+    localStorage.removeItem(FEEDBACK_STORAGE_KEY);
+    return true;
+  } catch (error) {
+    console.error('Error deleting all feedback:', error);
+    return false;
+  }
 };

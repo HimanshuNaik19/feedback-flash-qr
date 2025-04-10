@@ -23,7 +23,10 @@ const GeneratePage = () => {
                 <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-amber-800">
                   <strong>Mobile Device Detected:</strong> For best results, please generate QR codes on the deployed site, 
-                  not in development mode. If sharing the QR code with others, use the copy or share button.
+                  not in development mode. After generating, use the share or copy button to share the link directly with others.
+                  <br /><br />
+                  <strong>Important:</strong> QR codes scanned from the same device might not work correctly due to browser storage limitations.
+                  It's recommended to scan the QR code from a different device than the one that generated it.
                 </p>
               </div>
             </CardContent>
@@ -42,6 +45,18 @@ const GeneratePage = () => {
             <li>Share the QR code by displaying it, printing it, or sending the direct link</li>
             <li>When someone scans the code, they'll be taken to a feedback form</li>
             <li>The feedback will be associated with the context you provided</li>
+          </ol>
+        </div>
+        
+        <div className="bg-blue-50 p-6 rounded-lg border border-blue-200 mt-4">
+          <h2 className="text-lg font-semibold mb-2">Cross-Device Compatibility</h2>
+          <p className="mb-4">
+            To ensure your QR codes work correctly on all devices:
+          </p>
+          <ol className="list-decimal pl-5 space-y-2">
+            <li><strong>Share the direct link</strong> - For mobile users, share the feedback link directly instead of having them scan a QR code</li>
+            <li><strong>Use different devices</strong> - Don't scan your own QR codes from the same device that created them</li>
+            <li><strong>Verify on production</strong> - Always test your QR codes on the deployed site, not localhost</li>
           </ol>
         </div>
       </div>
