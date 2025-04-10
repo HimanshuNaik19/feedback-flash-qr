@@ -1,10 +1,9 @@
-
 import { useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Feedback, SentimentType, analyzeSentiment, storeFeedback, getRatingEmoji } from '@/utils/sentimentUtils';
+import { Feedback, analyzeSentiment, saveFeedback, getRatingEmoji } from '@/utils/sentimentUtils';
 import { incrementScan, getQRCode } from '@/utils/qrCodeUtils';
 import { toast } from 'sonner';
 
@@ -36,22 +35,19 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
     
     incrementScan(qrCodeId);
     
-    // Analyze sentiment based on BOTH rating and comment text
-    const sentiment: SentimentType = analyzeSentiment(comment, rating);
+    // Analyze sentiment based on rating
+    const sentiment = analyzeSentiment(rating as 1 | 2 | 3 | 4 | 5);
     
     // Create feedback object
-    const feedback: Feedback = {
-      id: uuidv4(),
+    const feedback: Omit<Feedback, 'id' | 'createdAt' | 'sentiment'> = {
       qrCodeId,
-      rating,
+      rating: rating as 1 | 2 | 3 | 4 | 5,
       comment,
-      sentiment,
-      createdAt: new Date().toISOString(),
       context: qrCode.context
     };
     
     // Store feedback
-    storeFeedback(feedback);
+    saveFeedback(feedback);
     
     // Show success message
     toast.success('Thank you for your feedback!');
