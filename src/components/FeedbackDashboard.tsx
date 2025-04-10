@@ -15,6 +15,10 @@ const FeedbackDashboard = () => {
   const [feedbackItems, setFeedbackItems] = useState<Feedback[]>([]);
   const [selectedTab, setSelectedTab] = useState('all');
   const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
+  const [qrCodesData, setQRCodesData] = useState<{ activeCount: number, expiredCount: number }>({
+    activeCount: 0,
+    expiredCount: 0
+  });
   
   const loadFeedbackData = () => {
     // Get the latest feedback data from localStorage
@@ -23,13 +27,31 @@ const FeedbackDashboard = () => {
     setFeedbackItems(feedback);
   };
   
+  const loadQRCodeData = async () => {
+    try {
+      const qrCodes = await getAllQRCodes();
+      const activeQRCodes = qrCodes.filter(qr => qr.isActive).length;
+      const expiredQRCodes = qrCodes.length - activeQRCodes;
+      
+      setQRCodesData({
+        activeCount: activeQRCodes,
+        expiredCount: expiredQRCodes
+      });
+    } catch (error) {
+      console.error('Error loading QR code data:', error);
+      setQRCodesData({ activeCount: 0, expiredCount: 0 });
+    }
+  };
+  
   useEffect(() => {
     // Load initial data
     loadFeedbackData();
+    loadQRCodeData();
     
     // Set up polling for real-time updates (every 2 seconds)
     const intervalId = setInterval(() => {
       loadFeedbackData();
+      loadQRCodeData();
     }, 2000);
     
     return () => clearInterval(intervalId);
@@ -51,10 +73,6 @@ const FeedbackDashboard = () => {
     setDeleteAllDialogOpen(false);
   };
   
-  const qrCodes = getAllQRCodes();
-  const activeQRCodes = qrCodes.filter(qr => qr.isActive).length;
-  const expiredQRCodes = qrCodes.length - activeQRCodes;
-  
   const filteredFeedback = filterFeedback(selectedTab);
   
   return (
@@ -64,8 +82,8 @@ const FeedbackDashboard = () => {
         positive={feedbackItems.filter(f => f.sentiment === 'positive').length}
         neutral={feedbackItems.filter(f => f.sentiment === 'neutral').length}
         negative={feedbackItems.filter(f => f.sentiment === 'negative').length}
-        activeQRCodes={activeQRCodes}
-        expiredQRCodes={expiredQRCodes}
+        activeQRCodes={qrCodesData.activeCount}
+        expiredQRCodes={qrCodesData.expiredCount}
       />
       
       <Card>

@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 
 // Define the types for analysis results
@@ -87,6 +88,17 @@ export const deleteFeedback = (id: string): boolean => {
   return true;
 };
 
+// Delete all feedback from localStorage (New function)
+export const deleteAllFeedback = (): boolean => {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([]));
+    return true;
+  } catch (error) {
+    console.error('Error deleting all feedback:', error);
+    return false;
+  }
+};
+
 // Helper function to get emoji for rating
 export const getRatingEmoji = (rating: number): string => {
   switch (rating) {
@@ -96,5 +108,21 @@ export const getRatingEmoji = (rating: number): string => {
     case 4: return '🙂';
     case 5: return '😄';
     default: return '❓';
+  }
+};
+
+// Helper function to get color for sentiment (New function)
+export const getSentimentColor = (sentiment: SentimentLabel | string): string => {
+  switch (sentiment) {
+    case 'very_positive':
+    case 'positive':
+      return 'bg-green-500';
+    case 'neutral':
+      return 'bg-amber-400';
+    case 'negative':
+    case 'very_negative':
+      return 'bg-red-500';
+    default:
+      return 'bg-gray-400';
   }
 };

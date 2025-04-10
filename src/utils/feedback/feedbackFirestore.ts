@@ -84,3 +84,21 @@ export const deleteFeedback = async (id: string): Promise<boolean> => {
     return false;
   }
 };
+
+// Add the missing function
+export const deleteFeedbackByQRCodeId = async (qrCodeId: string): Promise<boolean> => {
+  try {
+    const feedbackCollection = collection(db, FEEDBACK_COLLECTION);
+    const q = query(feedbackCollection, where("qrCodeId", "==", qrCodeId));
+    const querySnapshot = await getDocs(q);
+    
+    const deletePromises = querySnapshot.docs.map(doc => deleteDoc(doc.ref));
+    await Promise.all(deletePromises);
+    
+    console.log(`Deleted ${querySnapshot.size} feedback items for QR code ID: ${qrCodeId}`);
+    return true;
+  } catch (error) {
+    console.error('Error deleting feedback by QR code ID:', error);
+    return false;
+  }
+};
