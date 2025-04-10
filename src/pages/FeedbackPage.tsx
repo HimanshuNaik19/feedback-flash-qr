@@ -4,7 +4,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { getQRCode, isQRCodeValid } from '@/utils/qrCodeUtils';
 import FeedbackForm from '@/components/FeedbackForm';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, RefreshCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const FeedbackPage = () => {
   const { id } = useParams<{ id: string }>();
@@ -13,68 +14,74 @@ const FeedbackPage = () => {
   const [context, setContext] = useState<string | null>(null);
   const [submitted, setSubmitted] = useState(false);
   const [validationMessage, setValidationMessage] = useState<string>('');
+  const [retries, setRetries] = useState(0);
   
   useEffect(() => {
-    // Log for debugging - helps identify issues on mobile
-    console.log('FeedbackPage mounted');
-    console.log('Browser info:', navigator.userAgent);
-    console.log('Current URL:', window.location.href);
-    console.log('QR code ID from params:', id);
+    // Enhanced logging for debugging
+    console.log('FeedbackPage mounted', { 
+      id, 
+      retries,
+      localStorage: Object.keys(localStorage),
+      url: window.location.href,
+      userAgent: navigator.userAgent
+    });
     
-    if (!id) {
-      setIsValid(false);
-      setValidationMessage('No QR code ID provided');
-      console.error('No QR code ID provided in URL');
-      return;
-    }
-    
-    console.log('Checking QR code validity for ID:', id);
-    console.log('Current URL path:', window.location.pathname);
-    console.log('Current URL:', window.location.href);
-    
-    // Try to retrieve the QR code
-    const qrCode = getQRCode(id);
-    
-    if (!qrCode) {
-      console.log('QR code not found in storage. ID:', id);
-      console.log('Available QR codes:', localStorage.getItem('qrCodes'));
-      setIsValid(false);
-      setValidationMessage('QR code not found. It may have been deleted or never existed.');
+    const validateQRCode = () => {
+      if (!id) {
+        setIsValid(false);
+        setValidationMessage('No QR code ID provided');
+        console.error('No QR code ID provided in URL');
+        return;
+      }
       
-      // More detailed error for debugging
-      try {
-        const allStorage = {};
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key) {
-            allStorage[key] = localStorage.getItem(key);
+      // Try to retrieve the QR code
+      const qrCode = getQRCode(id);
+      
+      if (!qrCode) {
+        console.log('QR code not found in storage. ID:', id);
+        try {
+          // Show all stored QR codes for debugging
+          const storedCodes = localStorage.getItem('qrCodes');
+          console.log('Available QR codes in storage:', storedCodes);
+          
+          // Check other storage items
+          const allStorage = {};
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key) {
+              allStorage[key] = localStorage.getItem(key);
+            }
           }
+          console.log('All localStorage items:', allStorage);
+        } catch (e) {
+          console.error('Error inspecting localStorage:', e);
         }
-        console.log('All localStorage items:', allStorage);
-      } catch (e) {
-        console.error('Error inspecting localStorage:', e);
+        
+        setIsValid(false);
+        setValidationMessage('QR code not found. It may have been deleted or never existed.');
+        return;
       }
       
-      return;
-    }
-    
-    console.log('QR code found:', qrCode);
-    const valid = isQRCodeValid(qrCode);
-    
-    if (!valid) {
-      // Set appropriate validation message based on why it's invalid
-      if (new Date() > new Date(qrCode.expiresAt)) {
-        setValidationMessage('This QR code has expired.');
-      } else if (qrCode.currentScans >= qrCode.maxScans) {
-        setValidationMessage('This QR code has reached its maximum number of scans.');
-      } else if (!qrCode.isActive) {
-        setValidationMessage('This QR code has been deactivated.');
+      console.log('QR code found:', qrCode);
+      const valid = isQRCodeValid(qrCode);
+      
+      if (!valid) {
+        // Set appropriate validation message based on why it's invalid
+        if (new Date() > new Date(qrCode.expiresAt)) {
+          setValidationMessage('This QR code has expired.');
+        } else if (qrCode.currentScans >= qrCode.maxScans) {
+          setValidationMessage('This QR code has reached its maximum number of scans.');
+        } else if (!qrCode.isActive) {
+          setValidationMessage('This QR code has been deactivated.');
+        }
       }
-    }
+      
+      setIsValid(valid);
+      setContext(qrCode.context);
+    };
     
-    setIsValid(valid);
-    setContext(qrCode.context);
-  }, [id]);
+    validateQRCode();
+  }, [id, retries]);
   
   const handleSubmitSuccess = () => {
     setSubmitted(true);
@@ -82,6 +89,10 @@ const FeedbackPage = () => {
     setTimeout(() => {
       navigate('/thank-you');
     }, 3000);
+  };
+  
+  const refreshQRCode = () => {
+    setRetries(prev => prev + 1);
   };
   
   if (isValid === null) {
@@ -108,10 +119,29 @@ const FeedbackPage = () => {
               This QR code is invalid or has expired.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <p className="text-center text-muted-foreground">
               {validationMessage || 'Please contact the administrator to get a new QR code.'}
             </p>
+            
+            <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-800">
+                <strong>Debugging Info:</strong><br />
+                QR Code ID: {id}<br />
+                Browser: {navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop'}<br />
+                Storage items: {Object.keys(localStorage).join(', ')}
+              </p>
+            </div>
+            
+            <div className="flex justify-center">
+              <Button 
+                variant="outline"
+                onClick={refreshQRCode}
+                className="flex items-center gap-2"
+              >
+                <RefreshCcw className="h-4 w-4" /> Try Again
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

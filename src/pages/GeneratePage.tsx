@@ -1,8 +1,13 @@
 
 import Layout from '@/components/Layout';
 import QRCodeGenerator from '@/components/QRCodeGenerator';
+import { Card, CardContent } from '@/components/ui/card';
+import { AlertCircle } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const GeneratePage = () => {
+  const isMobile = useIsMobile();
+  
   return (
     <Layout>
       <div className="container max-w-6xl mx-auto space-y-6">
@@ -11,8 +16,33 @@ const GeneratePage = () => {
           <p className="text-muted-foreground">Create customized QR codes for feedback collection</p>
         </div>
         
+        {isMobile && (
+          <Card className="bg-amber-50 border-amber-200">
+            <CardContent className="pt-6">
+              <div className="flex gap-2 items-start">
+                <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-amber-800">
+                  <strong>Mobile Device Detected:</strong> For best results, please generate QR codes on the deployed site, 
+                  not in development mode. If sharing the QR code with others, use the copy or share button.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         <div className="flex justify-center py-8">
           <QRCodeGenerator />
+        </div>
+        
+        <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 mt-8">
+          <h2 className="text-xl font-semibold mb-4">How to Use QR Codes</h2>
+          <ol className="list-decimal pl-5 space-y-2">
+            <li>Generate a QR code with a specific context (e.g., "Table 5")</li>
+            <li>The QR code will be valid for the specified time and number of scans</li>
+            <li>Share the QR code by displaying it, printing it, or sending the direct link</li>
+            <li>When someone scans the code, they'll be taken to a feedback form</li>
+            <li>The feedback will be associated with the context you provided</li>
+          </ol>
         </div>
       </div>
     </Layout>
