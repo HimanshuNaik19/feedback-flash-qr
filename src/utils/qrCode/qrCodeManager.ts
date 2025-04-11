@@ -1,3 +1,4 @@
+
 import { v4 as uuidv4 } from 'uuid';
 import type { QRCodeContext } from './types';
 import { loadStoredQRCodes, saveQRCodesToStorage, testLocalStorage } from './storageUtils';
@@ -244,7 +245,21 @@ export const syncPendingQRCodes = async (): Promise<number> => {
     
     // Remove successfully synced QR codes from pending list
     if (successCount > 0) {
-      const newPendingSyncs = pendingSyncs.filter(id => !storedQRCodes[id] || !await getQRCodeFromFirestore(id));
+      // Fix: Wrap the async operation in a function and make it properly async
+      const checkFirestore = async (id: string) => {
+        return await getQRCodeFromFirestore(id) !== null;
+      };
+      
+      // Create a new array to store QR codes that still need syncing
+      const newPendingSyncs = [];
+      
+      // Check each pending sync
+      for (const id of pendingSyncs) {
+        if (!storedQRCodes[id] || !(await checkFirestore(id))) {
+          newPendingSyncs.push(id);
+        }
+      }
+      
       localStorage.setItem('pendingSyncs', JSON.stringify(newPendingSyncs));
       console.log(`Successfully synced ${successCount} QR codes. ${newPendingSyncs.length} remaining.`);
     }
