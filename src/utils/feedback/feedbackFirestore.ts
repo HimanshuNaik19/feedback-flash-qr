@@ -1,5 +1,5 @@
 
-import { collection, doc, addDoc, getDoc, getDocs, deleteDoc, query, where } from 'firebase/firestore';
+import { collection, doc, addDoc, getDoc, getDocs, deleteDoc, query, where, limit, orderBy } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Feedback } from '../sentimentUtils';
 
@@ -45,7 +45,9 @@ export const getFeedbackFromFirestore = async (id: string): Promise<Feedback | n
 export const getAllFeedbackFromFirestore = async (): Promise<Feedback[]> => {
   try {
     const feedbackCollection = collection(db, FEEDBACK_COLLECTION);
-    const feedbackSnapshot = await getDocs(feedbackCollection);
+    // Add orderBy to improve query performance and limit to prevent fetching too much data at once
+    const q = query(feedbackCollection, orderBy("createdAt", "desc"), limit(100));
+    const feedbackSnapshot = await getDocs(q);
     
     return feedbackSnapshot.docs.map(doc => ({ 
       id: doc.id, 
@@ -60,7 +62,12 @@ export const getAllFeedbackFromFirestore = async (): Promise<Feedback[]> => {
 export const getFeedbackByQRCodeId = async (qrCodeId: string): Promise<Feedback[]> => {
   try {
     const feedbackCollection = collection(db, FEEDBACK_COLLECTION);
-    const q = query(feedbackCollection, where("qrCodeId", "==", qrCodeId));
+    const q = query(
+      feedbackCollection, 
+      where("qrCodeId", "==", qrCodeId),
+      orderBy("createdAt", "desc"),
+      limit(50)
+    );
     const querySnapshot = await getDocs(q);
     
     return querySnapshot.docs.map(doc => ({ 
@@ -85,7 +92,6 @@ export const deleteFeedback = async (id: string): Promise<boolean> => {
   }
 };
 
-// Add the missing function
 export const deleteFeedbackByQRCodeId = async (qrCodeId: string): Promise<boolean> => {
   try {
     const feedbackCollection = collection(db, FEEDBACK_COLLECTION);

@@ -1,11 +1,12 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Feedback, analyzeSentiment, saveFeedback, getRatingEmoji } from '@/utils/sentimentUtils';
 import { getQRCode, incrementScan } from '@/utils/qrCodeUtils';
 import { toast } from 'sonner';
+import { Loader2 } from 'lucide-react';
 
 interface FeedbackFormProps {
   qrCodeId: string;
@@ -16,6 +17,47 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
   const [rating, setRating] = useState<number | null>(null);
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [qrCodeContext, setQRCodeContext] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const loadQRCodeData = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        // Add retry logic for better reliability
+        let retries = 3;
+        let qrCode = null;
+        
+        while (retries > 0 && !qrCode) {
+          try {
+            qrCode = await getQRCode(qrCodeId);
+            if (qrCode) break;
+          } catch (e) {
+            console.log(`Retry attempt ${4-retries} for QR code ${qrCodeId}`);
+            retries--;
+            // Wait 1 second before retrying
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+        
+        if (qrCode) {
+          setQRCodeContext(qrCode.context);
+        } else {
+          setError('Could not find the QR code. It may have expired or been deleted.');
+        }
+      } catch (err) {
+        console.error('Error loading QR code data:', err);
+        setError('Failed to load QR code data. Please try again later.');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    loadQRCodeData();
+  }, [qrCodeId]);
   
   const handleSubmit = async () => {
     if (rating === null) {
@@ -68,11 +110,47 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
   
   const ratingOptions = [1, 2, 3, 4, 5];
   
+  if (isLoading) {
+    return (
+      <Card className="w-full max-w-md mx-auto">
+        <CardContent className="flex flex-col items-center justify-center pt-6 pb-6">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+          <p>Loading feedback form...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  if (error) {
+    return (
+      <Card className="w-full max-w-md mx-auto border-red-200">
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-red-500">Error</CardTitle>
+          <CardDescription>There was a problem loading the feedback form</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-center">{error}</p>
+        </CardContent>
+        <CardFooter>
+          <Button 
+            className="w-full" 
+            variant="outline"
+            onClick={() => window.location.reload()}
+          >
+            Try Again
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+  }
+  
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
         <CardTitle className="text-2xl font-bold gradient-heading">Share Your Feedback</CardTitle>
-        <CardDescription>Your feedback helps us improve</CardDescription>
+        <CardDescription>
+          {qrCodeContext ? `Feedback for: ${qrCodeContext}` : 'Your feedback helps us improve'}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
@@ -108,7 +186,14 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
           onClick={handleSubmit}
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Submitting...' : 'Submit Feedback'}
+          {isSubmitting ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Submitting...
+            </>
+          ) : (
+            'Submit Feedback'
+          )}
         </Button>
       </CardFooter>
     </Card>
