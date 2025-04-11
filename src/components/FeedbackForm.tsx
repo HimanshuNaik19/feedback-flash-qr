@@ -1,12 +1,14 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Feedback, analyzeSentiment, saveFeedback, getRatingEmoji } from '@/utils/sentimentUtils';
 import { getQRCode, incrementScan } from '@/utils/qrCodeUtils';
 import { toast } from 'sonner';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
+import { getSynchronizationStatus } from '@/utils/firebase/networkStatus';
 
 interface FeedbackFormProps {
   qrCodeId: string;
@@ -18,46 +20,78 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRetrying, setIsRetrying] = useState(false);
   const [qrCodeContext, setQRCodeContext] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const [networkStatus, setNetworkStatus] = useState<'online' | 'offline' | 'syncing'>('online');
   
-  useEffect(() => {
-    const loadQRCodeData = async () => {
-      setIsLoading(true);
-      setError(null);
+  const loadQRCodeData = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    setIsRetrying(retryCount > 0);
+    
+    try {
+      // Check network status
+      const syncStatus = await getSynchronizationStatus();
+      setNetworkStatus(syncStatus);
       
-      try {
-        // Add retry logic for better reliability
-        let retries = 3;
-        let qrCode = null;
-        
-        while (retries > 0 && !qrCode) {
-          try {
-            qrCode = await getQRCode(qrCodeId);
-            if (qrCode) break;
-          } catch (e) {
-            console.log(`Retry attempt ${4-retries} for QR code ${qrCodeId}`);
-            retries--;
-            // Wait 1 second before retrying
+      // Add retry logic for better reliability
+      let retries = 3;
+      let qrCode = null;
+      
+      while (retries > 0 && !qrCode) {
+        try {
+          console.log(`Loading QR code ${qrCodeId} (attempt ${4-retries})`);
+          qrCode = await getQRCode(qrCodeId);
+          if (qrCode) break;
+        } catch (e) {
+          console.warn(`Retry attempt ${4-retries} for QR code ${qrCodeId} failed:`, e);
+          retries--;
+          // Wait 1 second before retrying
+          if (retries > 0) {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
         }
-        
-        if (qrCode) {
-          setQRCodeContext(qrCode.context);
-        } else {
-          setError('Could not find the QR code. It may have expired or been deleted.');
-        }
-      } catch (err) {
-        console.error('Error loading QR code data:', err);
-        setError('Failed to load QR code data. Please try again later.');
-      } finally {
-        setIsLoading(false);
       }
-    };
-    
+      
+      if (qrCode) {
+        console.log('QR code loaded successfully:', qrCode);
+        setQRCodeContext(qrCode.context);
+        
+        // Increment scan count in the background
+        incrementScan(qrCodeId).catch(err => {
+          console.error('Failed to increment scan count:', err);
+          // This isn't critical so we don't need to show an error to the user
+        });
+      } else {
+        throw new Error('QR code not found or network issue');
+      }
+    } catch (err) {
+      console.error('Error loading QR code data:', err);
+      setError('Failed to load QR code data. Please check your connection and try again.');
+    } finally {
+      setIsLoading(false);
+      setIsRetrying(false);
+    }
+  }, [qrCodeId, retryCount]);
+  
+  useEffect(() => {
     loadQRCodeData();
-  }, [qrCodeId]);
+    
+    // Set up periodic check if loading takes too long
+    const timeoutId = setTimeout(() => {
+      if (isLoading && !qrCodeContext) {
+        setError('Loading is taking longer than expected. Please check your connection.');
+      }
+    }, 10000);
+    
+    return () => clearTimeout(timeoutId);
+  }, [qrCodeId, loadQRCodeData, retryCount]);
+  
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
+  };
   
   const handleSubmit = async () => {
     if (rating === null) {
@@ -68,25 +102,15 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
     setIsSubmitting(true);
     
     try {
-      // Get QR code details and increment scan counter
-      const qrCode = await getQRCode(qrCodeId);
-      if (!qrCode) {
-        toast.error('Invalid QR code');
-        setIsSubmitting(false);
-        return;
-      }
-      
-      await incrementScan(qrCodeId);
-      
       // Create feedback object
       const feedback: Omit<Feedback, 'id' | 'createdAt' | 'sentiment'> = {
         qrCodeId,
         rating: rating as 1 | 2 | 3 | 4 | 5,
         comment,
-        context: qrCode.context
+        context: qrCodeContext || 'Unknown'
       };
       
-      // Store feedback
+      // Store feedback with retry logic
       await saveFeedback(feedback);
       
       // Show success message
@@ -113,9 +137,21 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
   if (isLoading) {
     return (
       <Card className="w-full max-w-md mx-auto">
+        <CardHeader>
+          <Skeleton className="h-8 w-3/4 mb-2" />
+          <Skeleton className="h-4 w-2/3" />
+        </CardHeader>
         <CardContent className="flex flex-col items-center justify-center pt-6 pb-6">
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
-          <p>Loading feedback form...</p>
+          <p>Loading feedback form<span className="dot-animation">...</span></p>
+          {isRetrying && (
+            <p className="text-sm text-muted-foreground mt-2">Retrying connection...</p>
+          )}
+          {qrCodeId && (
+            <p className="text-xs text-muted-foreground mt-4 break-all">
+              ID: {qrCodeId}
+            </p>
+          )}
         </CardContent>
       </Card>
     );
@@ -125,19 +161,37 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
     return (
       <Card className="w-full max-w-md mx-auto border-red-200">
         <CardHeader>
-          <CardTitle className="text-2xl font-bold text-red-500">Error</CardTitle>
+          <CardTitle className="text-2xl font-bold text-red-500 flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5" />
+            Error
+          </CardTitle>
           <CardDescription>There was a problem loading the feedback form</CardDescription>
         </CardHeader>
         <CardContent>
           <p className="text-center">{error}</p>
+          
+          {networkStatus === 'offline' && (
+            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+              <p className="text-sm text-amber-800">
+                You appear to be offline. Please check your internet connection and try again.
+              </p>
+            </div>
+          )}
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex gap-2 flex-wrap">
           <Button 
-            className="w-full" 
+            className="flex-1" 
+            variant="outline"
+            onClick={handleRetry}
+          >
+            <RefreshCw className="h-4 w-4 mr-2" /> Try Again
+          </Button>
+          <Button 
+            className="flex-1" 
             variant="outline"
             onClick={() => window.location.reload()}
           >
-            Try Again
+            Reload Page
           </Button>
         </CardFooter>
       </Card>
@@ -179,6 +233,14 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
             rows={4}
           />
         </div>
+        
+        {networkStatus === 'offline' && (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
+            <p className="text-sm text-amber-800">
+              <strong>You're currently offline.</strong> Your feedback will be saved and sent when you're back online.
+            </p>
+          </div>
+        )}
       </CardContent>
       <CardFooter>
         <Button 

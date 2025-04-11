@@ -1,88 +1,146 @@
 
-import { collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  getDoc, 
+  getDocs, 
+  updateDoc, 
+  deleteDoc, 
+  query, 
+  where,
+  writeBatch,
+  runTransaction,
+  serverTimestamp
+} from 'firebase/firestore';
 import { db } from '../firebase/config';
 import type { QRCodeContext } from './types';
+import { deleteFeedbackByQRCodeId } from '../feedback/feedbackFirestore';
 
 // Collection references
 const QR_CODES_COLLECTION = 'qrCodes';
 const FEEDBACK_COLLECTION = 'feedback';
 
+// Timeout promise for Firestore operations
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> => {
+  let timeoutId: number;
+  
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = window.setTimeout(() => {
+      reject(new Error(`Operation timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+  
+  return Promise.race([
+    promise.then(result => {
+      clearTimeout(timeoutId);
+      return result;
+    }).catch(error => {
+      clearTimeout(timeoutId);
+      throw error;
+    }),
+    timeoutPromise
+  ]);
+};
+
+// Retry logic for Firestore operations
+const withRetry = async <T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelayMs: number = 1000
+): Promise<T> => {
+  let lastError;
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (error) {
+      lastError = error;
+      console.warn(`Operation failed (attempt ${attempt + 1}/${maxRetries}):`, error);
+      
+      if (attempt < maxRetries - 1) {
+        // Wait with exponential backoff before retrying
+        const delayMs = baseDelayMs * Math.pow(2, attempt);
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+  
+  throw lastError;
+};
+
 // QR Code Operations
 export const storeQRCodeToFirestore = async (qrCode: QRCodeContext): Promise<void> => {
-  try {
+  return withRetry(async () => {
+    const qrCodeWithServerTimestamp = {
+      ...qrCode,
+      serverCreatedAt: serverTimestamp()
+    };
+    
     const qrCodeRef = doc(db, QR_CODES_COLLECTION, qrCode.id);
-    await setDoc(qrCodeRef, qrCode);
+    await withTimeout(setDoc(qrCodeRef, qrCodeWithServerTimestamp));
     console.log('QR code saved to Firestore:', qrCode.id);
-  } catch (error) {
-    console.error('Error saving QR code to Firestore:', error);
-    throw error;
-  }
+  });
 };
 
 export const getQRCodeFromFirestore = async (id: string): Promise<QRCodeContext | null> => {
-  try {
+  return withRetry(async () => {
     const qrCodeRef = doc(db, QR_CODES_COLLECTION, id);
-    const qrCodeSnap = await getDoc(qrCodeRef);
+    const qrCodeSnap = await withTimeout(getDoc(qrCodeRef));
     
     if (qrCodeSnap.exists()) {
       return qrCodeSnap.data() as QRCodeContext;
     }
     return null;
-  } catch (error) {
-    console.error('Error getting QR code from Firestore:', error);
-    return null;
-  }
+  });
 };
 
 export const getAllQRCodesFromFirestore = async (): Promise<QRCodeContext[]> => {
-  try {
+  return withRetry(async () => {
     const qrCodesCollection = collection(db, QR_CODES_COLLECTION);
-    const qrCodesSnapshot = await getDocs(qrCodesCollection);
+    const qrCodesSnapshot = await withTimeout(getDocs(qrCodesCollection));
     
+    console.log(`Retrieved ${qrCodesSnapshot.docs.length} QR codes from Firestore`);
     return qrCodesSnapshot.docs.map(doc => doc.data() as QRCodeContext);
-  } catch (error) {
-    console.error('Error getting all QR codes from Firestore:', error);
-    return [];
-  }
+  });
 };
 
 export const updateQRCodeInFirestore = async (id: string, updates: Partial<QRCodeContext>): Promise<void> => {
-  try {
+  return withRetry(async () => {
     const qrCodeRef = doc(db, QR_CODES_COLLECTION, id);
-    await updateDoc(qrCodeRef, updates);
+    
+    // Add server timestamp for the update
+    const updatesWithTimestamp = {
+      ...updates,
+      lastUpdated: serverTimestamp()
+    };
+    
+    await withTimeout(updateDoc(qrCodeRef, updatesWithTimestamp));
     console.log('QR code updated in Firestore:', id);
-  } catch (error) {
-    console.error('Error updating QR code in Firestore:', error);
-    throw error;
-  }
+  });
 };
 
 export const deleteQRCodeFromFirestore = async (id: string): Promise<boolean> => {
-  try {
-    const qrCodeRef = doc(db, QR_CODES_COLLECTION, id);
-    await deleteDoc(qrCodeRef);
-    console.log('QR code deleted from Firestore:', id);
-    return true;
-  } catch (error) {
-    console.error('Error deleting QR code from Firestore:', error);
-    return false;
-  }
-};
-
-// Feedback Operations
-export const deleteFeedbackByQRCodeId = async (qrCodeId: string): Promise<boolean> => {
-  try {
-    const feedbackCollection = collection(db, FEEDBACK_COLLECTION);
-    const q = query(feedbackCollection, where("qrCodeId", "==", qrCodeId));
-    const querySnapshot = await getDocs(q);
-    
-    const deletePromises = querySnapshot.docs.map(doc => deleteDoc(doc.ref));
-    await Promise.all(deletePromises);
-    
-    console.log(`Deleted ${querySnapshot.size} feedback items for QR code ID: ${qrCodeId}`);
-    return true;
-  } catch (error) {
-    console.error('Error deleting feedback by QR code ID:', error);
-    return false;
-  }
+  return withRetry(async () => {
+    try {
+      // Use a transaction to ensure atomicity when deleting QR code and related feedback
+      await runTransaction(db, async (transaction) => {
+        // Delete the QR code
+        const qrCodeRef = doc(db, QR_CODES_COLLECTION, id);
+        transaction.delete(qrCodeRef);
+        
+        // We don't delete feedback here as that would make the transaction too large
+        // Instead we'll do it separately after the transaction completes
+      });
+      
+      // Now delete the associated feedback
+      await deleteFeedbackByQRCodeId(id);
+      
+      console.log('QR code and associated feedback deleted from Firestore:', id);
+      return true;
+    } catch (error) {
+      console.error('Transaction failure:', error);
+      return false;
+    }
+  });
 };
