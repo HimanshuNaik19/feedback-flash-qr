@@ -1,4 +1,3 @@
-
 import { 
   collection, 
   doc, 
@@ -21,8 +20,8 @@ import { deleteFeedbackByQRCodeId } from '../feedback/feedbackFirestore';
 const QR_CODES_COLLECTION = 'qrCodes';
 const FEEDBACK_COLLECTION = 'feedback';
 
-// Timeout promise for Firestore operations
-const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> => {
+// Timeout promise for Firestore operations - increasing timeout to 15 seconds
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 15000): Promise<T> => {
   let timeoutId: number;
   
   const timeoutPromise = new Promise<never>((_, reject) => {
@@ -43,11 +42,11 @@ const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 10000): Promise
   ]);
 };
 
-// Retry logic for Firestore operations
+// Retry logic for Firestore operations - improved with more retries and longer delays
 const withRetry = async <T>(
   operation: () => Promise<T>,
-  maxRetries: number = 3,
-  baseDelayMs: number = 1000
+  maxRetries: number = 5,  // Increased from 3 to 5
+  baseDelayMs: number = 1500  // Increased from 1000 to 1500
 ): Promise<T> => {
   let lastError;
   

@@ -1,4 +1,3 @@
-
 import { v4 as uuidv4 } from 'uuid';
 import type { QRCodeContext } from './types';
 import { loadStoredQRCodes, saveQRCodesToStorage, testLocalStorage } from './storageUtils';
@@ -21,8 +20,8 @@ let qrCodeCache: Record<string, {
   timestamp: number;
 }> = {};
 
-// Cache expiration time in milliseconds (2 minutes)
-const CACHE_EXPIRATION = 2 * 60 * 1000;
+// Cache expiration time in milliseconds (increased to 5 minutes to reduce network calls)
+const CACHE_EXPIRATION = 5 * 60 * 1000;
 
 // Initialize stored QR codes from localStorage
 let storedQRCodes: Record<string, QRCodeContext> = loadStoredQRCodes();
@@ -64,9 +63,13 @@ export const storeQRCode = async (qrCode: QRCodeContext): Promise<void> => {
   // Invalidate the all QR codes cache
   allQRCodesCache = null;
   
-  // Cloud storage for cross-device sync
+  // Cloud storage for cross-device sync - wrapping in try/catch to ensure the function doesn't hang
   try {
-    await storeQRCodeToFirestore(qrCode);
+    await Promise.race([
+      storeQRCodeToFirestore(qrCode),
+      // Set a timeout of 10 seconds specifically for this operation
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore operation timeout')), 10000))
+    ]);
     console.log('QR code successfully stored in Firestore');
   } catch (error) {
     console.error('Failed to store QR code in Firestore:', error);
@@ -245,17 +248,20 @@ export const syncPendingQRCodes = async (): Promise<number> => {
     
     // Remove successfully synced QR codes from pending list
     if (successCount > 0) {
-      // Fix: Wrap the async operation in a function and make it properly async
-      const checkFirestore = async (id: string) => {
-        return await getQRCodeFromFirestore(id) !== null;
-      };
-      
-      // Create a new array to store QR codes that still need syncing
+      // Create a new array for QR codes that still need syncing
       const newPendingSyncs = [];
       
       // Check each pending sync
       for (const id of pendingSyncs) {
-        if (!storedQRCodes[id] || !(await checkFirestore(id))) {
+        try {
+          const firestoreQRCode = await getQRCodeFromFirestore(id);
+          // Only keep in pending syncs if it's not found in Firestore
+          if (!firestoreQRCode) {
+            newPendingSyncs.push(id);
+          }
+        } catch (error) {
+          // If there's an error checking, keep it in pending syncs
+          console.error(`Error checking QR code ${id} in Firestore:`, error);
           newPendingSyncs.push(id);
         }
       }

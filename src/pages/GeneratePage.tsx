@@ -1,12 +1,46 @@
 
+import { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import QRCodeGenerator from '@/components/QRCodeGenerator';
 import { Card, CardContent } from '@/components/ui/card';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, WifiOff } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { getSynchronizationStatus } from '@/utils/firebase/networkStatus';
 
 const GeneratePage = () => {
   const isMobile = useIsMobile();
+  const [networkStatus, setNetworkStatus] = useState<'online' | 'offline' | 'syncing' | 'checking'>('checking');
+  
+  // Check network status on page load
+  useEffect(() => {
+    const checkNetwork = async () => {
+      try {
+        const status = await getSynchronizationStatus();
+        setNetworkStatus(status);
+      } catch (error) {
+        console.error('Error checking network status:', error);
+        setNetworkStatus('offline');
+      }
+    };
+    
+    checkNetwork();
+    
+    // Set up network status listener
+    const handleOnline = () => setNetworkStatus('online');
+    const handleOffline = () => setNetworkStatus('offline');
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    // Periodic check
+    const interval = setInterval(checkNetwork, 30000);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      clearInterval(interval);
+    };
+  }, []);
   
   return (
     <Layout>
@@ -15,6 +49,20 @@ const GeneratePage = () => {
           <h1 className="text-3xl font-bold gradient-heading">Generate QR Code</h1>
           <p className="text-muted-foreground">Create customized QR codes for feedback collection</p>
         </div>
+        
+        {/* Network Status Indicator */}
+        {networkStatus === 'offline' && (
+          <Card className="bg-red-50 border-red-200">
+            <CardContent className="pt-6">
+              <div className="flex gap-2 items-start">
+                <WifiOff className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-red-800">
+                  <strong>Offline Mode:</strong> You appear to be offline. QR codes will be saved locally and will sync when you're back online.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
         
         {isMobile && (
           <Card className="bg-amber-50 border-amber-200">

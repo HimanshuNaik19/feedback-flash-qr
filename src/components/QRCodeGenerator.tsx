@@ -8,7 +8,7 @@ import { Slider } from '@/components/ui/slider';
 import { generateQRCodeData, storeQRCode, getQRCodeUrl } from '@/utils/qrCodeUtils';
 import QRCodeDisplay from './QRCodeDisplay';
 import { toast } from 'sonner';
-import { Copy, Share2, Loader2 } from 'lucide-react';
+import { Copy, Share2, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const QRCodeGenerator = () => {
@@ -19,8 +19,10 @@ const QRCodeGenerator = () => {
   const [qrCodeUrl, setQrCodeUrl] = useState<string | null>(null);
   const [deployedUrl, setDeployedUrl] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [hasError, setHasError] = useState(false);
   const urlInputRef = useRef<HTMLInputElement>(null);
   const isMobile = useIsMobile();
+  const timeoutRef = useRef<number | null>(null);
   
   useEffect(() => {
     // Determine the deployment URL
@@ -30,6 +32,13 @@ const QRCodeGenerator = () => {
     console.log('Current deployment URL detected:', currentUrl);
     console.log('User agent:', navigator.userAgent);
     console.log('Is mobile detected:', isMobile);
+    
+    // Cleanup timeout on unmount
+    return () => {
+      if (timeoutRef.current) {
+        window.clearTimeout(timeoutRef.current);
+      }
+    };
   }, [isMobile]);
   
   const handleGenerateQRCode = async () => {
@@ -39,6 +48,16 @@ const QRCodeGenerator = () => {
     }
     
     setIsGenerating(true);
+    setHasError(false);
+    
+    // Set a timeout to show an error message if generation takes too long
+    timeoutRef.current = window.setTimeout(() => {
+      if (isGenerating) {
+        setHasError(true);
+        // Don't set isGenerating to false yet to allow retrying
+        toast.error('QR code generation is taking longer than expected. You can continue to wait or try again.');
+      }
+    }, 15000);
     
     try {
       const qrCodeData = generateQRCodeData(context, expiryHours, maxScans);
@@ -51,12 +70,24 @@ const QRCodeGenerator = () => {
       setQrCodeUrl(url);
       setGeneratedQRCode(JSON.stringify(qrCodeData));
       toast.success('QR Code generated successfully!');
+      
+      if (timeoutRef.current) {
+        window.clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
     } catch (error) {
       console.error('Error generating QR code:', error);
       toast.error('Failed to generate QR code. Please try again.');
+      setHasError(true);
     } finally {
       setIsGenerating(false);
     }
+  };
+  
+  const retryGeneration = () => {
+    // Reset error state and try again
+    setHasError(false);
+    handleGenerateQRCode();
   };
   
   const copyToClipboard = () => {
@@ -109,6 +140,7 @@ const QRCodeGenerator = () => {
             placeholder="Enter context" 
             value={context} 
             onChange={(e) => setContext(e.target.value)} 
+            disabled={isGenerating}
           />
         </div>
         
@@ -120,7 +152,8 @@ const QRCodeGenerator = () => {
             max={72} 
             step={1} 
             value={[expiryHours]} 
-            onValueChange={(values) => setExpiryHours(values[0])} 
+            onValueChange={(values) => setExpiryHours(values[0])}
+            disabled={isGenerating}
           />
         </div>
         
@@ -132,9 +165,32 @@ const QRCodeGenerator = () => {
             max={1000} 
             step={10} 
             value={[maxScans]} 
-            onValueChange={(values) => setMaxScans(values[0])} 
+            onValueChange={(values) => setMaxScans(values[0])}
+            disabled={isGenerating}
           />
         </div>
+        
+        {hasError && (
+          <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
+            <div className="flex gap-2 items-start">
+              <AlertCircle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <p className="text-sm text-red-800">
+                  <strong>Network Issue Detected:</strong> There might be a problem connecting to the server.
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2 text-red-600 border-red-300"
+                  onClick={retryGeneration}
+                >
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Retry
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
         
         {generatedQRCode && qrCodeUrl && (
           <div className="mt-4 animate-fade-in">
@@ -183,7 +239,7 @@ const QRCodeGenerator = () => {
         <Button 
           className="w-full bg-feedback-blue hover:bg-feedback-darkblue" 
           onClick={handleGenerateQRCode}
-          disabled={isGenerating}
+          disabled={isGenerating || !context}
         >
           {isGenerating ? (
             <>
