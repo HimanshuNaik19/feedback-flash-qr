@@ -1,3 +1,4 @@
+
 import { 
   collection, 
   doc, 
@@ -10,7 +11,8 @@ import {
   where,
   writeBatch,
   runTransaction,
-  serverTimestamp
+  serverTimestamp,
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import type { QRCodeContext } from './types';
@@ -102,6 +104,27 @@ export const getAllQRCodesFromFirestore = async (): Promise<QRCodeContext[]> => 
     console.log(`Retrieved ${qrCodesSnapshot.docs.length} QR codes from Firestore`);
     return qrCodesSnapshot.docs.map(doc => doc.data() as QRCodeContext);
   });
+};
+
+// Function to subscribe to real-time QR code updates
+export const subscribeToQRCodes = (callback: (qrCodes: QRCodeContext[]) => void): () => void => {
+  const qrCodesCollection = collection(db, QR_CODES_COLLECTION);
+  
+  // Create a real-time listener
+  const unsubscribe = onSnapshot(
+    qrCodesCollection,
+    (snapshot) => {
+      const qrCodes = snapshot.docs.map(doc => doc.data() as QRCodeContext);
+      console.log(`Real-time update: Retrieved ${qrCodes.length} QR codes`);
+      callback(qrCodes);
+    },
+    (error) => {
+      console.error('Error in QR codes real-time listener:', error);
+    }
+  );
+  
+  // Return the unsubscribe function
+  return unsubscribe;
 };
 
 export const updateQRCodeInFirestore = async (id: string, updates: Partial<QRCodeContext>): Promise<void> => {

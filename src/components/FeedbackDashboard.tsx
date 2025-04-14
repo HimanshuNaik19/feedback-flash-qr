@@ -1,5 +1,6 @@
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -10,78 +11,91 @@ import { Trash } from 'lucide-react';
 import { toast } from 'sonner';
 import FeedbackStats from './FeedbackStats';
 import FeedbackList from './FeedbackList';
+import { getAllFeedbackFromFirestore } from '@/utils/feedback/feedbackFirestore';
 
 const FeedbackDashboard = () => {
-  const [feedbackItems, setFeedbackItems] = useState<Feedback[]>([]);
   const [selectedTab, setSelectedTab] = useState('all');
   const [deleteAllDialogOpen, setDeleteAllDialogOpen] = useState(false);
-  const [qrCodesData, setQRCodesData] = useState<{ activeCount: number, expiredCount: number }>({
-    activeCount: 0,
-    expiredCount: 0
+  const queryClient = useQueryClient();
+  
+  // Use React Query for feedback data with 5-second polling
+  const { data: feedbackItems = [], isLoading: isFeedbackLoading } = useQuery({
+    queryKey: ['feedback'],
+    queryFn: async () => {
+      try {
+        // Try to get data from Firestore first
+        const firestoreData = await getAllFeedbackFromFirestore();
+        console.log('Loaded feedback data from Firestore:', firestoreData.length, 'items');
+        return firestoreData;
+      } catch (error) {
+        console.error('Error loading from Firestore, falling back to local:', error);
+        // Fallback to local data
+        const localData = getAllFeedback();
+        console.log('Loaded feedback data from local:', localData.length, 'items');
+        return localData;
+      }
+    },
+    refetchInterval: 5000, // Poll every 5 seconds
   });
   
-  const loadFeedbackData = () => {
-    // Get the latest feedback data from localStorage
-    const feedback = getAllFeedback();
-    console.log('Loaded feedback data:', feedback.length, 'items');
-    setFeedbackItems(feedback);
-  };
-  
-  const loadQRCodeData = async () => {
-    try {
-      const qrCodes = await getAllQRCodes();
-      const activeQRCodes = qrCodes.filter(qr => qr.isActive).length;
-      const expiredQRCodes = qrCodes.length - activeQRCodes;
-      
-      setQRCodesData({
-        activeCount: activeQRCodes,
-        expiredCount: expiredQRCodes
-      });
-    } catch (error) {
-      console.error('Error loading QR code data:', error);
-      setQRCodesData({ activeCount: 0, expiredCount: 0 });
-    }
-  };
-  
-  useEffect(() => {
-    // Load initial data
-    loadFeedbackData();
-    loadQRCodeData();
-    
-    // Set up polling for real-time updates (every 2 seconds)
-    const intervalId = setInterval(() => {
-      loadFeedbackData();
-      loadQRCodeData();
-    }, 2000);
-    
-    return () => clearInterval(intervalId);
-  }, []);
+  // Use React Query for QR code data with 5-second polling
+  const { data: qrCodesData = { activeCount: 0, expiredCount: 0 }, isLoading: isQRCodeLoading } = useQuery({
+    queryKey: ['qrCodes'],
+    queryFn: async () => {
+      try {
+        const qrCodes = await getAllQRCodes();
+        const activeQRCodes = qrCodes.filter(qr => qr.isActive).length;
+        const expiredQRCodes = qrCodes.length - activeQRCodes;
+        
+        return {
+          activeCount: activeQRCodes,
+          expiredCount: expiredQRCodes
+        };
+      } catch (error) {
+        console.error('Error loading QR code data:', error);
+        return { activeCount: 0, expiredCount: 0 };
+      }
+    },
+    refetchInterval: 5000, // Poll every 5 seconds
+  });
   
   const filterFeedback = (sentiment: string) => {
     if (sentiment === 'all') return feedbackItems;
     return feedbackItems.filter(item => item.sentiment === sentiment);
   };
   
-  const handleDeleteAllFeedback = () => {
-    const success = deleteAllFeedback();
-    if (success) {
-      toast.success('All feedback has been deleted');
-      loadFeedbackData();
-    } else {
-      toast.error('Failed to delete feedback');
+  const handleDeleteAllFeedback = async () => {
+    try {
+      const success = await deleteAllFeedback();
+      if (success) {
+        toast.success('All feedback has been deleted');
+        // Invalidate queries to refresh data
+        queryClient.invalidateQueries({ queryKey: ['feedback'] });
+      } else {
+        toast.error('Failed to delete feedback');
+      }
+    } catch (error) {
+      console.error('Error deleting feedback:', error);
+      toast.error('An error occurred while deleting feedback');
+    } finally {
+      setDeleteAllDialogOpen(false);
     }
-    setDeleteAllDialogOpen(false);
   };
   
   const filteredFeedback = filterFeedback(selectedTab);
+  
+  // Count for each sentiment type
+  const positiveCount = feedbackItems.filter(f => f.sentiment === 'positive').length;
+  const neutralCount = feedbackItems.filter(f => f.sentiment === 'neutral').length;
+  const negativeCount = feedbackItems.filter(f => f.sentiment === 'negative').length;
   
   return (
     <div className="space-y-6">
       <FeedbackStats 
         totalFeedback={feedbackItems.length}
-        positive={feedbackItems.filter(f => f.sentiment === 'positive').length}
-        neutral={feedbackItems.filter(f => f.sentiment === 'neutral').length}
-        negative={feedbackItems.filter(f => f.sentiment === 'negative').length}
+        positive={positiveCount}
+        neutral={neutralCount}
+        negative={negativeCount}
         activeQRCodes={qrCodesData.activeCount}
         expiredQRCodes={qrCodesData.expiredCount}
       />
@@ -133,10 +147,18 @@ const FeedbackDashboard = () => {
             </TabsList>
             
             <TabsContent value={selectedTab}>
-              <FeedbackList 
-                feedbackItems={filteredFeedback} 
-                onFeedbackDeleted={loadFeedbackData}
-              />
+              {isFeedbackLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-pulse text-center">
+                    <p className="text-muted-foreground">Loading feedback data...</p>
+                  </div>
+                </div>
+              ) : (
+                <FeedbackList 
+                  feedbackItems={filteredFeedback} 
+                  onFeedbackDeleted={() => queryClient.invalidateQueries({ queryKey: ['feedback'] })}
+                />
+              )}
             </TabsContent>
           </Tabs>
         </CardContent>
