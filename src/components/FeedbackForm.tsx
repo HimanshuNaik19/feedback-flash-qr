@@ -102,12 +102,13 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
     setIsSubmitting(true);
     
     try {
-      // Create feedback object
+      // Create feedback object with message property
       const feedback: Omit<Feedback, 'id' | 'createdAt' | 'sentiment'> = {
         qrCodeId,
         rating: rating as 1 | 2 | 3 | 4 | 5,
         comment,
-        context: qrCodeContext || 'Unknown'
+        context: qrCodeContext || 'Unknown',
+        message: comment // Use comment as message to satisfy the interface requirement
       };
       
       // Store feedback with retry logic

@@ -52,7 +52,7 @@ const retryOperation = async <T>(operation: () => Promise<T>, maxRetries = MAX_R
   throw lastError;
 };
 
-export const saveFeedbackToFirestore = async (feedback: Omit<Feedback, 'id' | 'createdAt' | 'sentiment'>): Promise<Feedback> => {
+export const saveFeedbackToFirestore = async (feedback: Omit<Feedback, 'id' | 'createdAt'> & { sentiment: 'positive' | 'neutral' | 'negative' }): Promise<Feedback> => {
   return retryOperation(async () => {
     const feedbackWithTimestamp = {
       ...feedback,
@@ -63,10 +63,19 @@ export const saveFeedbackToFirestore = async (feedback: Omit<Feedback, 'id' | 'c
     const docRef = await addDoc(collection(db, FEEDBACK_COLLECTION), feedbackWithTimestamp);
     console.log('Feedback saved to Firestore with ID:', docRef.id);
     
-    return {
+    // Fix the type conversion by explicitly adding all required properties
+    const result: Feedback = {
       id: docRef.id,
-      ...feedbackWithTimestamp
-    } as Feedback;
+      qrCodeId: feedbackWithTimestamp.qrCodeId,
+      sentiment: feedbackWithTimestamp.sentiment,
+      createdAt: feedbackWithTimestamp.createdAt,
+      message: feedbackWithTimestamp.message || '',
+      rating: feedbackWithTimestamp.rating,
+      comment: feedbackWithTimestamp.comment,
+      context: feedbackWithTimestamp.context
+    };
+    
+    return result;
   });
 };
 

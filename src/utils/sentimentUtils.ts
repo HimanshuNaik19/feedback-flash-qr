@@ -5,13 +5,12 @@ import { deleteAllFeedbackFromFirestore, deleteFeedback as deleteFirestoreFeedba
 export interface Feedback {
   id: string;
   qrCodeId: string;
-  message: string;
+  comment?: string;     // Make comment optional
+  rating?: number;      // User rating
+  context?: string;     // Context of the feedback
   sentiment: 'positive' | 'neutral' | 'negative';
   createdAt: string;
-  // Add these properties to fix the TypeScript errors in FeedbackList.tsx
-  rating?: number;
-  context?: string;
-  comment?: string;
+  message?: string;     // Make message optional since we're using comment instead
 }
 
 // Function to get all feedback from localStorage
@@ -49,14 +48,22 @@ export const analyzeSentiment = (rating: number): 'positive' | 'neutral' | 'nega
   return 'negative';
 };
 
+// Update the type to make message optional
 export const saveFeedback = async (feedback: Omit<Feedback, 'id' | 'createdAt' | 'sentiment'>): Promise<Feedback | null> => {
   try {
     // Add sentiment based on rating
     const sentiment = analyzeSentiment(feedback.rating as number);
     
+    // Create a new object with the sentiment property
+    const feedbackWithSentiment = { 
+      ...feedback,
+      // Add empty message if not provided (to satisfy the Firestore expectations)
+      message: feedback.message || feedback.comment || ''
+    };
+    
     // Save to Firestore
     const firestoreFeedback = await import('./feedback/feedbackFirestore').then(module => 
-      module.saveFeedbackToFirestore({ ...feedback, sentiment })
+      module.saveFeedbackToFirestore({ ...feedbackWithSentiment, sentiment })
     );
     
     return firestoreFeedback;
