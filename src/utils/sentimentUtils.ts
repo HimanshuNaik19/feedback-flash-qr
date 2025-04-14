@@ -1,6 +1,6 @@
 
 import { toast } from 'sonner';
-import { deleteAllFeedbackFromFirestore } from './feedback/feedbackFirestore';
+import { deleteAllFeedbackFromFirestore, deleteFeedback as deleteFirestoreFeedback } from './feedback/feedbackFirestore';
 
 export interface Feedback {
   id: string;
@@ -8,6 +8,10 @@ export interface Feedback {
   message: string;
   sentiment: 'positive' | 'neutral' | 'negative';
   createdAt: string;
+  // Add these properties to fix the TypeScript errors in FeedbackList.tsx
+  rating?: number;
+  context?: string;
+  comment?: string;
 }
 
 // Function to get all feedback from localStorage
@@ -35,6 +39,53 @@ export const deleteAllFeedback = async (): Promise<boolean> => {
     console.error('Error deleting all feedback:', error);
     toast.error('An error occurred while deleting feedback');
     return false;
+  }
+};
+
+// Add the missing functions that are needed by FeedbackForm.tsx and FeedbackList.tsx
+export const analyzeSentiment = (rating: number): 'positive' | 'neutral' | 'negative' => {
+  if (rating >= 4) return 'positive';
+  if (rating >= 2) return 'neutral';
+  return 'negative';
+};
+
+export const saveFeedback = async (feedback: Omit<Feedback, 'id' | 'createdAt' | 'sentiment'>): Promise<Feedback | null> => {
+  try {
+    // Add sentiment based on rating
+    const sentiment = analyzeSentiment(feedback.rating as number);
+    
+    // Save to Firestore
+    const firestoreFeedback = await import('./feedback/feedbackFirestore').then(module => 
+      module.saveFeedbackToFirestore({ ...feedback, sentiment })
+    );
+    
+    return firestoreFeedback;
+  } catch (error) {
+    console.error('Error saving feedback:', error);
+    toast.error('Failed to save feedback');
+    return null;
+  }
+};
+
+export const deleteFeedback = async (id: string): Promise<boolean> => {
+  try {
+    return await deleteFirestoreFeedback(id);
+  } catch (error) {
+    console.error('Error deleting feedback:', error);
+    return false;
+  }
+};
+
+export const getRatingEmoji = (rating?: number): string => {
+  if (!rating) return '😐';
+  
+  switch (rating) {
+    case 5: return '😁';
+    case 4: return '🙂';
+    case 3: return '😐';
+    case 2: return '🙁';
+    case 1: return '😞';
+    default: return '😐';
   }
 };
 

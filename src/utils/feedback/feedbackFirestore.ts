@@ -1,4 +1,3 @@
-
 import { 
   collection, 
   doc, 
@@ -53,7 +52,7 @@ const retryOperation = async <T>(operation: () => Promise<T>, maxRetries = MAX_R
   throw lastError;
 };
 
-export const saveFeedbackToFirestore = async (feedback: Omit<Feedback, 'id' | 'createdAt'>): Promise<Feedback> => {
+export const saveFeedbackToFirestore = async (feedback: Omit<Feedback, 'id' | 'createdAt' | 'sentiment'>): Promise<Feedback> => {
   return retryOperation(async () => {
     const feedbackWithTimestamp = {
       ...feedback,
@@ -171,6 +170,11 @@ export const deleteFeedbackByQRCodeId = async (qrCodeId: string): Promise<boolea
     console.log(`Deleted ${querySnapshot.size} feedback items for QR code ID: ${qrCodeId}`);
     return true;
   });
+};
+
+// Add the missing function that's being imported in sentimentUtils.ts
+export const deleteAllFeedbackFromFirestore = async (): Promise<boolean> => {
+  return deleteAllFeedback();
 };
 
 export const deleteAllFeedback = async (): Promise<boolean> => {
