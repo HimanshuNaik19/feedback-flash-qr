@@ -31,7 +31,7 @@ export const forceSynchronization = async (): Promise<boolean> => {
     const { clearCache } = await import('../qrCode/qrCodeManager');
     clearCache();
     
-    // Intentional delay to allow backend to sync
+    // Intentional delay to simulate backend sync
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     pendingSyncOperations--;
