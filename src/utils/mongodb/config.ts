@@ -1,6 +1,25 @@
 
 // Mock MongoDB implementation for browser environment
 // In a real app, you would use a backend API to communicate with MongoDB
+import { Collection } from 'mongodb';
+
+// Define a custom type for our mock collection that satisfies TypeScript
+interface MockCollection {
+  find: (query?: any) => {
+    toArray: () => Promise<any[]>;
+    sort: () => {
+      limit: (n: number) => {
+        toArray: () => Promise<any[]>;
+      };
+    };
+  };
+  findOne: (query: any) => Promise<any>;
+  insertOne: (doc: any) => Promise<{ insertedId: string }>;
+  updateOne: (query: any, update: any, options?: { upsert?: boolean }) => Promise<{ modifiedCount: number }>;
+  deleteOne: (query: any) => Promise<{ deletedCount: number }>;
+  deleteMany: (query: any) => Promise<{ deletedCount: number }>;
+  command: (cmd: any) => Promise<{ ok: number }>;
+}
 
 // Simulated MongoDB client for browser environment
 class MockMongoClient {
@@ -21,7 +40,7 @@ class MockMongoClient {
 
   db(name: string) {
     return {
-      collection: (collectionName: string) => {
+      collection: (collectionName: string): MockCollection => {
         if (!this.collections[collectionName]) {
           this.collections[collectionName] = [];
         }
@@ -51,7 +70,7 @@ class MockMongoClient {
             this.collections[collectionName].push(newDoc);
             return { insertedId: id };
           },
-          updateOne: async (query: any, update: any, options = {}) => {
+          updateOne: async (query: any, update: any, options: { upsert?: boolean } = {}) => {
             if (query.id) {
               const index = this.collections[collectionName].findIndex(item => item.id === query.id);
               if (index !== -1) {

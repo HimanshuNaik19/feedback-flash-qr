@@ -1,5 +1,3 @@
-
-import { Collection, ObjectId } from 'mongodb';
 import { getDb } from '../mongodb/config';
 import { Feedback } from '../sentimentUtils';
 import { toast } from 'sonner';
@@ -38,7 +36,7 @@ const retryOperation = async <T>(operation: () => Promise<T>, maxRetries = MAX_R
 };
 
 // Get feedback collection reference
-const getFeedbackCollection = async (): Promise<Collection> => {
+const getFeedbackCollection = async () => {
   const db = await getDb();
   return db.collection(FEEDBACK_COLLECTION);
 };

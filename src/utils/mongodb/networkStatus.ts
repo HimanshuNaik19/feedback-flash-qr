@@ -30,6 +30,10 @@ export const forceSynchronization = async (): Promise<boolean> => {
     // Clear local caches
     const { clearCache } = await import('../qrCode/qrCodeManager');
     clearCache();
+
+    // Check for pending QR codes to sync
+    const { syncPendingQRCodes } = await import('../qrCode/qrCodeManager');
+    await syncPendingQRCodes();
     
     // Intentional delay to simulate backend sync
     await new Promise(resolve => setTimeout(resolve, 2000));
@@ -45,8 +49,15 @@ export const forceSynchronization = async (): Promise<boolean> => {
 
 // Monitor online/offline status changes
 if (typeof window !== 'undefined') {
-  window.addEventListener('online', () => {
+  window.addEventListener('online', async () => {
     console.log('Browser went online');
+    // Attempt to sync pending operations when coming back online
+    try {
+      const { syncPendingQRCodes } = await import('../qrCode/qrCodeManager');
+      await syncPendingQRCodes();
+    } catch (error) {
+      console.error('Failed to sync pending operations:', error);
+    }
   });
   
   window.addEventListener('offline', () => {

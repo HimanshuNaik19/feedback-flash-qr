@@ -1,5 +1,3 @@
-
-import { Collection, ObjectId } from 'mongodb';
 import { getDb } from '../mongodb/config';
 import type { QRCodeContext } from './types';
 import { deleteFeedbackByQRCodeId } from '../feedback/feedbackMongodb';
@@ -56,7 +54,7 @@ const withRetry = async <T>(
 };
 
 // Get QR codes collection
-const getQRCodesCollection = async (): Promise<Collection> => {
+const getQRCodesCollection = async () => {
   const db = await getDb();
   return db.collection(QR_CODES_COLLECTION);
 };
