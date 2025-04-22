@@ -1,10 +1,50 @@
 
-// Mock MongoDB implementation for browser environment
-// In a real app, you would use a backend API to communicate with MongoDB
-import { Collection } from 'mongodb';
+// MongoDB API configuration
+// This file configures the interaction with our MongoDB backend API
 
-// Define a custom type for our mock collection that satisfies TypeScript
-interface MockCollection {
+// Define API endpoint (this would point to your actual backend in production)
+const API_BASE_URL = '/api/mongodb'; // This would be replaced with your actual backend URL in production
+
+// Helper function for making API requests with error handling
+async function apiRequest(endpoint: string, method: string = 'GET', data?: any) {
+  try {
+    const url = `${API_BASE_URL}${endpoint}`;
+    const options: RequestInit = {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      credentials: 'include', // Includes cookies for authentication if needed
+    };
+
+    if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+      options.body = JSON.stringify(data);
+    }
+
+    const response = await fetch(url, options);
+    
+    // Check if the request was successful
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(`API error (${response.status}): ${errorData.message || response.statusText}`);
+    }
+
+    // Check if the response is empty
+    const contentType = response.headers.get('content-type');
+    if (contentType && contentType.includes('application/json')) {
+      return await response.json();
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('API request failed:', error);
+    throw error;
+  }
+}
+
+// Mock collection interface that matches the MongoDB Collection interface
+// but uses the API under the hood
+export interface ApiCollection {
   find: (query?: any) => {
     toArray: () => Promise<any[]>;
     sort: () => {
@@ -18,115 +58,83 @@ interface MockCollection {
   updateOne: (query: any, update: any, options?: { upsert?: boolean }) => Promise<{ modifiedCount: number }>;
   deleteOne: (query: any) => Promise<{ deletedCount: number }>;
   deleteMany: (query: any) => Promise<{ deletedCount: number }>;
-  command: (cmd: any) => Promise<{ ok: number }>;
 }
 
-// Simulated MongoDB client for browser environment
-class MockMongoClient {
+// Create a mock MongoDB client that uses the API
+class ApiMongoClient {
   private connected = false;
-  private collections: Record<string, any[]> = {};
 
   async connect() {
-    this.connected = true;
-    console.log("✅ Connected successfully to Mock MongoDB");
+    // Test connection by pinging the API
+    try {
+      await apiRequest('/ping');
+      this.connected = true;
+      console.log("✅ Connected successfully to MongoDB API");
+    } catch (error) {
+      console.error("Failed to connect to MongoDB API:", error);
+      // Still mark as connected to allow offline mode to work
+      this.connected = true;
+    }
     return this;
   }
 
   async close() {
     this.connected = false;
-    console.log("MongoDB connection closed");
+    console.log("MongoDB API connection closed");
     return true;
   }
 
   db(name: string) {
     return {
-      collection: (collectionName: string): MockCollection => {
-        if (!this.collections[collectionName]) {
-          this.collections[collectionName] = [];
-        }
+      collection: (collectionName: string): ApiCollection => {
         return {
           find: (query = {}) => {
-            // Simple mock implementation
             return {
               toArray: async () => {
-                return [...this.collections[collectionName]];
+                return await apiRequest(`/${collectionName}/find`, 'POST', { query });
               },
               sort: () => ({
-                limit: () => ({
-                  toArray: async () => [...this.collections[collectionName]]
+                limit: (limit: number) => ({
+                  toArray: async () => {
+                    return await apiRequest(`/${collectionName}/find`, 'POST', { 
+                      query,
+                      options: { sort: true, limit }
+                    });
+                  }
                 })
               })
             };
           },
           findOne: async (query: any) => {
-            if (query.id) {
-              return this.collections[collectionName].find(item => item.id === query.id);
-            }
-            return null;
+            return await apiRequest(`/${collectionName}/findOne`, 'POST', { query });
           },
           insertOne: async (doc: any) => {
-            const id = Math.random().toString(36).substring(2, 15);
-            const newDoc = { ...doc, _id: id };
-            this.collections[collectionName].push(newDoc);
-            return { insertedId: id };
+            return await apiRequest(`/${collectionName}/insertOne`, 'POST', { document: doc });
           },
           updateOne: async (query: any, update: any, options: { upsert?: boolean } = {}) => {
-            if (query.id) {
-              const index = this.collections[collectionName].findIndex(item => item.id === query.id);
-              if (index !== -1) {
-                this.collections[collectionName][index] = {
-                  ...this.collections[collectionName][index],
-                  ...update.$set
-                };
-              } else if (options.upsert) {
-                const newDoc = { ...update.$set, _id: Math.random().toString(36).substring(2, 15), id: query.id };
-                this.collections[collectionName].push(newDoc);
-              }
-            }
-            return { modifiedCount: 1 };
+            return await apiRequest(`/${collectionName}/updateOne`, 'POST', { 
+              query, 
+              update,
+              options
+            });
           },
           deleteOne: async (query: any) => {
-            let deletedCount = 0;
-            if (query.id) {
-              const index = this.collections[collectionName].findIndex(item => item.id === query.id);
-              if (index !== -1) {
-                this.collections[collectionName].splice(index, 1);
-                deletedCount = 1;
-              }
-            }
-            return { deletedCount };
+            return await apiRequest(`/${collectionName}/deleteOne`, 'POST', { query });
           },
           deleteMany: async (query: any) => {
-            if (Object.keys(query).length === 0) {
-              // Delete all documents
-              const count = this.collections[collectionName].length;
-              this.collections[collectionName] = [];
-              return { deletedCount: count };
-            } else if (query.qrCodeId) {
-              const initialLength = this.collections[collectionName].length;
-              this.collections[collectionName] = this.collections[collectionName].filter(
-                item => item.qrCodeId !== query.qrCodeId
-              );
-              return { deletedCount: initialLength - this.collections[collectionName].length };
-            }
-            return { deletedCount: 0 };
-          },
-          command: async (cmd: any) => {
-            if (cmd.ping) return { ok: 1 };
-            return { ok: 0 };
+            return await apiRequest(`/${collectionName}/deleteMany`, 'POST', { query });
           }
         };
       },
       command: async (cmd: any) => {
-        if (cmd.ping) return { ok: 1 };
-        return { ok: 0 };
+        return await apiRequest('/command', 'POST', { command: cmd });
       }
     };
   }
 }
 
-// Create a new MongoClient instance
-const client = new MockMongoClient();
+// Create a new API client instance
+const client = new ApiMongoClient();
 
 // Export functions for the rest of the application
 export const getClient = async () => {
