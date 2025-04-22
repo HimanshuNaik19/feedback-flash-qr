@@ -11,7 +11,21 @@ import ThankYouPage from "./pages/ThankYouPage";
 import NotFound from "./pages/NotFound";
 import ManageQRCodesPage from "./pages/ManageQRCodesPage";
 
-const queryClient = new QueryClient();
+// Configure the query client with MongoDB-friendly settings
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30000, // 30 seconds
+      refetchOnWindowFocus: true,
+      retry: 3
+    }
+  }
+});
+
+// Initialize MongoDB connection on app start
+import('./utils/mongodb/config').catch(err => {
+  console.error('Failed to initialize MongoDB connection:', err);
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

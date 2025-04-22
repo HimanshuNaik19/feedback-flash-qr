@@ -6,7 +6,7 @@ import FeedbackDashboard from '@/components/FeedbackDashboard';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { forceSynchronization } from '@/utils/firebase/networkStatus';
+import { forceSynchronization } from '@/utils/mongodb/networkStatus';
 
 const Index = () => {
   const queryClient = useQueryClient();
@@ -16,7 +16,7 @@ const Index = () => {
       // Show toast for refresh start
       toast.info('Refreshing dashboard data...');
       
-      // Force sync with Firestore
+      // Force sync with MongoDB
       await forceSynchronization();
       
       // Invalidate and refetch all queries

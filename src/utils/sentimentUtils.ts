@@ -1,6 +1,6 @@
 
 import { toast } from 'sonner';
-import { deleteAllFeedbackFromFirestore, deleteFeedback as deleteFirestoreFeedback } from './feedback/feedbackFirestore';
+import { deleteAllFeedbackFromMongoDB, deleteFeedback as deleteMongoDBFeedback } from './feedback/feedbackMongodb';
 
 export interface Feedback {
   id: string;
@@ -24,16 +24,16 @@ export const getAllFeedback = (): Feedback[] => {
   }
 };
 
-// Delete all feedback (both from localStorage and Firestore)
+// Delete all feedback (both from localStorage and MongoDB)
 export const deleteAllFeedback = async (): Promise<boolean> => {
   try {
-    // First try to delete from Firestore
-    const firestoreSuccess = await deleteAllFeedbackFromFirestore();
+    // First try to delete from MongoDB
+    const mongoDBSuccess = await deleteAllFeedbackFromMongoDB();
     
     // Then delete from localStorage
     localStorage.removeItem('feedback');
     
-    return firestoreSuccess;
+    return mongoDBSuccess;
   } catch (error) {
     console.error('Error deleting all feedback:', error);
     toast.error('An error occurred while deleting feedback');
@@ -57,16 +57,16 @@ export const saveFeedback = async (feedback: Omit<Feedback, 'id' | 'createdAt' |
     // Create a new object with the sentiment property
     const feedbackWithSentiment = { 
       ...feedback,
-      // Add empty message if not provided (to satisfy the Firestore expectations)
+      // Add empty message if not provided (to satisfy the MongoDB expectations)
       message: feedback.message || feedback.comment || ''
     };
     
-    // Save to Firestore
-    const firestoreFeedback = await import('./feedback/feedbackFirestore').then(module => 
-      module.saveFeedbackToFirestore({ ...feedbackWithSentiment, sentiment })
+    // Save to MongoDB
+    const mongoDBFeedback = await import('./feedback/feedbackMongodb').then(module => 
+      module.saveFeedbackToMongoDB({ ...feedbackWithSentiment, sentiment })
     );
     
-    return firestoreFeedback;
+    return mongoDBFeedback;
   } catch (error) {
     console.error('Error saving feedback:', error);
     toast.error('Failed to save feedback');
@@ -76,7 +76,7 @@ export const saveFeedback = async (feedback: Omit<Feedback, 'id' | 'createdAt' |
 
 export const deleteFeedback = async (id: string): Promise<boolean> => {
   try {
-    return await deleteFirestoreFeedback(id);
+    return await deleteMongoDBFeedback(id);
   } catch (error) {
     console.error('Error deleting feedback:', error);
     return false;
