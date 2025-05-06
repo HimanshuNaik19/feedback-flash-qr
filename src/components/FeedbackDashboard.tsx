@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -11,7 +10,6 @@ import { Trash } from 'lucide-react';
 import { toast } from 'sonner';
 import FeedbackStats from './FeedbackStats';
 import FeedbackList from './FeedbackList';
-import { getAllFeedbackFromMongoDB } from '@/utils/feedback/feedbackMongodb';
 
 const FeedbackDashboard = () => {
   const [selectedTab, setSelectedTab] = useState('all');
@@ -23,16 +21,14 @@ const FeedbackDashboard = () => {
     queryKey: ['feedback'],
     queryFn: async () => {
       try {
-        // Try to get data from MongoDB first
-        const mongoData = await getAllFeedbackFromMongoDB();
-        console.log('Loaded feedback data from MongoDB:', mongoData.length, 'items');
-        return mongoData;
-      } catch (error) {
-        console.error('Error loading from MongoDB, falling back to local:', error);
-        // Fallback to local data
+        // For local-only mode, just get the data from localStorage
+        console.log('Getting feedback data from localStorage');
         const localData = getAllFeedback();
         console.log('Loaded feedback data from local:', localData.length, 'items');
         return localData;
+      } catch (error) {
+        console.error('Error loading feedback data:', error);
+        return [];
       }
     },
     refetchInterval: 5000, // Poll every 5 seconds

@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -7,7 +8,7 @@ import { getQRCode, incrementScan } from '@/utils/qrCodeUtils';
 import { toast } from 'sonner';
 import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { getSynchronizationStatus } from '@/utils/mongodb/networkStatus';
+import { storeFeedbackToStorage } from '@/utils/qrCode/storageUtils';
 
 interface FeedbackFormProps {
   qrCodeId: string;
@@ -101,28 +102,35 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
     setIsSubmitting(true);
     
     try {
-      // Create feedback object with message property
-      const feedback: Omit<Feedback, 'id' | 'createdAt' | 'sentiment'> = {
+      // Create feedback object with required properties
+      const newFeedback = {
+        id: 'local-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
         qrCodeId,
         rating: rating as 1 | 2 | 3 | 4 | 5,
         comment,
         context: qrCodeContext || 'Unknown',
-        message: comment // Use comment as message to satisfy the interface requirement
+        sentiment: analyzeSentiment(rating as number),
+        createdAt: new Date().toISOString(),
+        message: comment // Include message field for compatibility
       };
       
-      // Store feedback with retry logic
-      await saveFeedback(feedback);
+      // Store directly to localStorage using storageUtils function
+      const success = await storeFeedbackToStorage(newFeedback);
       
-      // Show success message
-      toast.success('Thank you for your feedback!');
-      
-      // Reset form
-      setRating(null);
-      setComment('');
-      
-      // Call success callback if provided
-      if (onSubmitSuccess) {
-        onSubmitSuccess();
+      if (success) {
+        // Show success message
+        toast.success('Thank you for your feedback!');
+        
+        // Reset form
+        setRating(null);
+        setComment('');
+        
+        // Call success callback if provided
+        if (onSubmitSuccess) {
+          onSubmitSuccess();
+        }
+      } else {
+        throw new Error('Failed to save feedback');
       }
     } catch (error) {
       console.error('Error submitting feedback:', error);
