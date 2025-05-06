@@ -86,3 +86,85 @@ export const saveQRCodesToStorage = (qrCodes: Record<string, QRCodeContext>) => 
     }
   }
 };
+
+// Mock MongoDB functions for local-only operation
+export const storeFeedbackToStorage = (feedback: any): Promise<boolean> => {
+  try {
+    // Get existing feedback or create new array
+    const existingFeedback = JSON.parse(localStorage.getItem('feedback') || '[]');
+    
+    // Add ID if not present
+    if (!feedback.id) {
+      feedback.id = 'local-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+    }
+    
+    // Add timestamp if not present
+    if (!feedback.createdAt) {
+      feedback.createdAt = new Date().toISOString();
+    }
+    
+    // Add to array and save
+    existingFeedback.push(feedback);
+    localStorage.setItem('feedback', JSON.stringify(existingFeedback));
+    
+    return Promise.resolve(true);
+  } catch (error) {
+    console.error('Error storing feedback to localStorage:', error);
+    return Promise.resolve(false);
+  }
+};
+
+export const getAllFeedbackFromStorage = (): Promise<any[]> => {
+  try {
+    const feedback = JSON.parse(localStorage.getItem('feedback') || '[]');
+    return Promise.resolve(feedback);
+  } catch (error) {
+    console.error('Error getting all feedback from localStorage:', error);
+    return Promise.resolve([]);
+  }
+};
+
+export const getFeedbackByQRCodeIdFromStorage = (qrCodeId: string): Promise<any[]> => {
+  try {
+    const allFeedback = JSON.parse(localStorage.getItem('feedback') || '[]');
+    const filteredFeedback = allFeedback.filter((item: any) => item.qrCodeId === qrCodeId);
+    return Promise.resolve(filteredFeedback);
+  } catch (error) {
+    console.error('Error getting feedback by QR code ID from localStorage:', error);
+    return Promise.resolve([]);
+  }
+};
+
+export const deleteFeedbackByIdFromStorage = (id: string): Promise<boolean> => {
+  try {
+    const allFeedback = JSON.parse(localStorage.getItem('feedback') || '[]');
+    const updatedFeedback = allFeedback.filter((item: any) => item.id !== id);
+    localStorage.setItem('feedback', JSON.stringify(updatedFeedback));
+    return Promise.resolve(true);
+  } catch (error) {
+    console.error('Error deleting feedback from localStorage:', error);
+    return Promise.resolve(false);
+  }
+};
+
+export const deleteFeedbackByQRCodeIdFromStorage = (qrCodeId: string): Promise<boolean> => {
+  try {
+    const allFeedback = JSON.parse(localStorage.getItem('feedback') || '[]');
+    const updatedFeedback = allFeedback.filter((item: any) => item.qrCodeId !== qrCodeId);
+    localStorage.setItem('feedback', JSON.stringify(updatedFeedback));
+    return Promise.resolve(true);
+  } catch (error) {
+    console.error('Error deleting feedback by QR code ID from localStorage:', error);
+    return Promise.resolve(false);
+  }
+};
+
+export const deleteAllFeedbackFromStorage = (): Promise<boolean> => {
+  try {
+    localStorage.setItem('feedback', '[]');
+    return Promise.resolve(true);
+  } catch (error) {
+    console.error('Error deleting all feedback from localStorage:', error);
+    return Promise.resolve(false);
+  }
+};
