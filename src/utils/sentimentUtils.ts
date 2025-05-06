@@ -16,8 +16,9 @@ export interface Feedback {
 // Function to get all feedback from localStorage
 export const getAllFeedback = (): Feedback[] => {
   try {
-    // Use the storageUtils function to get all feedback
-    return getAllFeedbackFromStorage();
+    // Use the storageUtils function to get all feedback but ensure it returns an array directly
+    const storedFeedback = localStorage.getItem('feedback');
+    return storedFeedback ? JSON.parse(storedFeedback) : [];
   } catch (error) {
     console.error('Error getting feedback from localStorage:', error);
     return [];

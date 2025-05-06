@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,6 +8,7 @@ import { toast } from 'sonner';
 import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { storeFeedbackToStorage } from '@/utils/qrCode/storageUtils';
+import { getSynchronizationStatus } from '@/utils/firebase/networkStatus'; // Add this import
 
 interface FeedbackFormProps {
   qrCodeId: string;
