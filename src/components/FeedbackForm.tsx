@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Feedback, analyzeSentiment, saveFeedback, getRatingEmoji } from '@/utils/sentimentUtils';
 import { getQRCode, incrementScan } from '@/utils/qrCodeUtils';
@@ -8,7 +10,7 @@ import { toast } from 'sonner';
 import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { storeFeedbackToStorage } from '@/utils/qrCode/storageUtils';
-import { getSynchronizationStatus } from '@/utils/firebase/networkStatus'; // Add this import
+import { getSynchronizationStatus } from '@/utils/firebase/networkStatus';
 
 interface FeedbackFormProps {
   qrCodeId: string;
@@ -17,6 +19,9 @@ interface FeedbackFormProps {
 
 const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
   const [rating, setRating] = useState<number | null>(null);
+  const [name, setName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [email, setEmail] = useState('');
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -94,8 +99,24 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
   };
   
   const handleSubmit = async () => {
+    // Validate form inputs
     if (rating === null) {
       toast.error('Please select a rating');
+      return;
+    }
+    
+    if (!name.trim()) {
+      toast.error('Please enter your name');
+      return;
+    }
+    
+    if (!phoneNumber.trim()) {
+      toast.error('Please enter your phone number');
+      return;
+    }
+    
+    if (!comment.trim()) {
+      toast.error('Please enter your comment');
       return;
     }
     
@@ -106,6 +127,9 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
       const newFeedback = {
         id: 'local-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
         qrCodeId,
+        name,
+        phoneNumber,
+        email: email.trim() || undefined, // Only include email if provided
         rating: rating as 1 | 2 | 3 | 4 | 5,
         comment,
         context: qrCodeContext || 'Unknown',
@@ -123,6 +147,9 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
         
         // Reset form
         setRating(null);
+        setName('');
+        setPhoneNumber('');
+        setEmail('');
         setComment('');
         
         // Call success callback if provided
@@ -233,12 +260,47 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
         </div>
         
         <div className="space-y-2">
-          <h3 className="text-sm font-medium">Additional comments (optional)</h3>
+          <Label htmlFor="name">Full Name *</Label>
+          <Input
+            id="name"
+            placeholder="Enter your full name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="phoneNumber">Phone Number *</Label>
+          <Input
+            id="phoneNumber"
+            placeholder="Enter your phone number"
+            value={phoneNumber}
+            onChange={(e) => setPhoneNumber(e.target.value)}
+            required
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="email">Email (Optional)</Label>
+          <Input
+            id="email"
+            type="email"
+            placeholder="Enter your email address"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="comment">Comments *</Label>
           <Textarea
+            id="comment"
             placeholder="Tell us more about your experience..."
             value={comment}
             onChange={(e) => setComment(e.target.value)}
             rows={4}
+            required
           />
         </div>
         

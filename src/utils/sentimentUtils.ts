@@ -5,9 +5,12 @@ import { getAllFeedbackFromStorage, deleteFeedbackByIdFromStorage, deleteAllFeed
 export interface Feedback {
   id: string;
   qrCodeId: string;
-  comment?: string;     // Make comment optional
-  rating?: number;      // User rating
-  context?: string;     // Context of the feedback
+  name: string;          // Add name field
+  phoneNumber: string;   // Add phone number field
+  email?: string;        // Add optional email field
+  comment: string;       // Comment is now required
+  rating?: number;       // User rating
+  context?: string;      // Context of the feedback
   sentiment: 'positive' | 'neutral' | 'negative';
   createdAt: string;
   message?: string;     // Make message optional since we're using comment instead
