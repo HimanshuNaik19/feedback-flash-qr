@@ -67,6 +67,9 @@ export const saveFeedbackToFirestore = async (feedback: Omit<Feedback, 'id' | 'c
     const result: Feedback = {
       id: docRef.id,
       qrCodeId: feedbackWithTimestamp.qrCodeId,
+      name: feedbackWithTimestamp.name,
+      phoneNumber: feedbackWithTimestamp.phoneNumber,
+      email: feedbackWithTimestamp.email,
       sentiment: feedbackWithTimestamp.sentiment,
       createdAt: feedbackWithTimestamp.createdAt,
       message: feedbackWithTimestamp.message || '',

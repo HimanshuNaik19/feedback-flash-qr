@@ -1,4 +1,3 @@
-
 import { getDb } from '../mongodb/config';
 import { Feedback } from '../sentimentUtils';
 import { toast } from 'sonner';
@@ -54,10 +53,13 @@ export const saveFeedbackToMongoDB = async (feedback: Omit<Feedback, 'id' | 'cre
     const result = await collection.insertOne(feedbackWithTimestamp);
     console.log('Feedback saved to MongoDB with ID:', result.insertedId);
     
-    // Return the saved feedback with proper id
+    // Return the saved feedback with proper id and all required fields
     const savedFeedback: Feedback = {
       id: result.insertedId.toString(),
       qrCodeId: feedbackWithTimestamp.qrCodeId,
+      name: feedbackWithTimestamp.name,
+      phoneNumber: feedbackWithTimestamp.phoneNumber,
+      email: feedbackWithTimestamp.email,
       sentiment: feedbackWithTimestamp.sentiment,
       createdAt: feedbackWithTimestamp.createdAt,
       message: feedbackWithTimestamp.message || '',
