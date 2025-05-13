@@ -1,3 +1,4 @@
+
 import { 
   collection, 
   doc, 
@@ -75,7 +76,8 @@ export const saveFeedbackToFirestore = async (feedback: Omit<Feedback, 'id' | 'c
       message: feedbackWithTimestamp.message || '',
       rating: feedbackWithTimestamp.rating,
       comment: feedbackWithTimestamp.comment,
-      context: feedbackWithTimestamp.context
+      context: feedbackWithTimestamp.context,
+      customAnswers: feedbackWithTimestamp.customAnswers
     };
     
     return result;

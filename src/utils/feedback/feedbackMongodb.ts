@@ -1,3 +1,4 @@
+
 import { getDb } from '../mongodb/config';
 import { Feedback } from '../sentimentUtils';
 import { toast } from 'sonner';
@@ -65,7 +66,8 @@ export const saveFeedbackToMongoDB = async (feedback: Omit<Feedback, 'id' | 'cre
       message: feedbackWithTimestamp.message || '',
       rating: feedbackWithTimestamp.rating,
       comment: feedbackWithTimestamp.comment,
-      context: feedbackWithTimestamp.context
+      context: feedbackWithTimestamp.context,
+      customAnswers: feedbackWithTimestamp.customAnswers
     };
     
     return savedFeedback;

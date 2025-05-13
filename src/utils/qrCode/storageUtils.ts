@@ -1,6 +1,6 @@
 
 import { STORAGE_KEY } from './types';
-import type { QRCodeContext } from './types';
+import type { QRCodeContext, CustomQuestion } from './types';
 
 // Enhanced localStorage compatibility for different browsers and contexts
 export const getStorageData = (key: string): string | null => {

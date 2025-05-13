@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,6 +12,8 @@ import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { storeFeedbackToStorage } from '@/utils/qrCode/storageUtils';
 import { getSynchronizationStatus } from '@/utils/firebase/networkStatus';
+import { CustomQuestion, CustomQuestionAnswer } from '@/utils/qrCode/types';
+import CustomQuestionInput from './CustomQuestionInput';
 
 interface FeedbackFormProps {
   qrCodeId: string;
@@ -30,6 +33,8 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
   const [error, setError] = useState<string | null>(null);
   const [retryCount, setRetryCount] = useState(0);
   const [networkStatus, setNetworkStatus] = useState<'online' | 'offline' | 'syncing'>('online');
+  const [customQuestions, setCustomQuestions] = useState<CustomQuestion[]>([]);
+  const [customAnswers, setCustomAnswers] = useState<Record<string, string>>({});
   
   const loadQRCodeData = useCallback(async () => {
     setIsLoading(true);
@@ -63,6 +68,18 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
       if (qrCode) {
         console.log('QR code loaded successfully:', qrCode);
         setQRCodeContext(qrCode.context);
+        
+        // Load custom questions if available
+        if (qrCode.customQuestions && qrCode.customQuestions.length > 0) {
+          setCustomQuestions(qrCode.customQuestions);
+          
+          // Initialize answers object
+          const initialAnswers: Record<string, string> = {};
+          qrCode.customQuestions.forEach(q => {
+            initialAnswers[q.id] = '';
+          });
+          setCustomAnswers(initialAnswers);
+        }
         
         // Increment scan count in the background
         incrementScan(qrCodeId).catch(err => {
@@ -98,31 +115,65 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
     setRetryCount(prev => prev + 1);
   };
   
-  const handleSubmit = async () => {
-    // Validate form inputs
+  // Handle custom question answers
+  const handleCustomQuestionChange = (questionId: string, value: string) => {
+    setCustomAnswers(prev => ({
+      ...prev,
+      [questionId]: value
+    }));
+  };
+  
+  // Validate form including custom questions
+  const validateForm = () => {
+    // Basic validation
     if (rating === null) {
       toast.error('Please select a rating');
-      return;
+      return false;
     }
     
     if (!name.trim()) {
       toast.error('Please enter your name');
-      return;
+      return false;
     }
     
     if (!phoneNumber.trim()) {
       toast.error('Please enter your phone number');
-      return;
+      return false;
     }
     
     if (!comment.trim()) {
       toast.error('Please enter your comment');
+      return false;
+    }
+    
+    // Validate required custom questions
+    for (const question of customQuestions) {
+      if (question.required && (!customAnswers[question.id] || !customAnswers[question.id].trim())) {
+        toast.error(`Please answer the question: ${question.questionText}`);
+        return false;
+      }
+    }
+    
+    return true;
+  };
+  
+  const handleSubmit = async () => {
+    // Validate form inputs
+    if (!validateForm()) {
       return;
     }
     
     setIsSubmitting(true);
     
     try {
+      // Convert custom answers to the required format
+      const formattedCustomAnswers: CustomQuestionAnswer[] = Object.entries(customAnswers)
+        .map(([questionId, answer]) => ({
+          questionId,
+          answer: answer.trim()
+        }))
+        .filter(item => item.answer); // Only include non-empty answers
+      
       // Create feedback object with required properties
       const newFeedback = {
         id: 'local-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
@@ -135,7 +186,8 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
         context: qrCodeContext || 'Unknown',
         sentiment: analyzeSentiment(rating as number),
         createdAt: new Date().toISOString(),
-        message: comment // Include message field for compatibility
+        message: comment, // Include message field for compatibility
+        customAnswers: formattedCustomAnswers.length > 0 ? formattedCustomAnswers : undefined
       };
       
       // Store directly to localStorage using storageUtils function
@@ -151,6 +203,7 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
         setPhoneNumber('');
         setEmail('');
         setComment('');
+        setCustomAnswers({});
         
         // Call success callback if provided
         if (onSubmitSuccess) {
@@ -303,6 +356,22 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
             required
           />
         </div>
+        
+        {/* Custom questions section */}
+        {customQuestions.length > 0 && (
+          <div className="space-y-4">
+            <h3 className="text-base font-medium border-t pt-4">Additional Questions</h3>
+            
+            {customQuestions.map((question) => (
+              <CustomQuestionInput
+                key={question.id}
+                question={question}
+                value={customAnswers[question.id] || ''}
+                onChange={(value) => handleCustomQuestionChange(question.id, value)}
+              />
+            ))}
+          </div>
+        )}
         
         {networkStatus === 'offline' && (
           <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">

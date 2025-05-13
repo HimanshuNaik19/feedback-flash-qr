@@ -1,6 +1,7 @@
 
 import { toast } from 'sonner';
 import { getAllFeedbackFromStorage, deleteFeedbackByIdFromStorage, deleteAllFeedbackFromStorage } from './qrCode/storageUtils';
+import { CustomQuestionAnswer } from './qrCode/types';
 
 export interface Feedback {
   id: string;
@@ -14,6 +15,7 @@ export interface Feedback {
   sentiment: 'positive' | 'neutral' | 'negative';
   createdAt: string;
   message?: string;     // Make message optional since we're using comment instead
+  customAnswers?: CustomQuestionAnswer[]; // Add custom answers field
 }
 
 // Function to get all feedback from localStorage
