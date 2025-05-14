@@ -21,11 +21,11 @@ const FeedbackDashboard = () => {
     queryKey: ['feedback'],
     queryFn: async () => {
       try {
-        // For MongoDB mode, call the async function and await the result
-        console.log('Getting feedback data from MongoDB');
-        const data = await getAllFeedback();
-        console.log('Loaded feedback data from MongoDB:', data.length, 'items');
-        return data;
+        // For local-only mode, just get the data from localStorage
+        console.log('Getting feedback data from localStorage');
+        const localData = getAllFeedback();
+        console.log('Loaded feedback data from local:', localData.length, 'items');
+        return localData;
       } catch (error) {
         console.error('Error loading feedback data:', error);
         return [];

@@ -42,25 +42,12 @@ async function apiRequest(endpoint: string, method: string = 'GET', data?: any) 
   }
 }
 
-// Generate mock ObjectId for client-side - we'll use actual ObjectIds on the server
-export class ObjectId {
-  id: string;
-  
-  constructor(id?: string) {
-    this.id = id || crypto.randomUUID();
-  }
-  
-  toString() {
-    return this.id;
-  }
-}
-
-// Updated collection interface that matches the MongoDB Collection interface
-// but uses the API under the hood, with proper argument support
+// Mock collection interface that matches the MongoDB Collection interface
+// but uses the API under the hood
 export interface ApiCollection {
   find: (query?: any) => {
     toArray: () => Promise<any[]>;
-    sort: (sortOptions?: any) => {
+    sort: () => {
       limit: (n: number) => {
         toArray: () => Promise<any[]>;
       };
@@ -70,7 +57,7 @@ export interface ApiCollection {
   insertOne: (doc: any) => Promise<{ insertedId: string }>;
   updateOne: (query: any, update: any, options?: { upsert?: boolean }) => Promise<{ modifiedCount: number }>;
   deleteOne: (query: any) => Promise<{ deletedCount: number }>;
-  deleteMany: (query?: any) => Promise<{ deletedCount: number }>;
+  deleteMany: (query: any) => Promise<{ deletedCount: number }>;
 }
 
 // Create a mock MongoDB client that uses the API
@@ -106,12 +93,12 @@ class ApiMongoClient {
               toArray: async () => {
                 return await apiRequest(`/${collectionName}/find`, 'POST', { query });
               },
-              sort: (sortOptions = {}) => ({
+              sort: () => ({
                 limit: (limit: number) => ({
                   toArray: async () => {
                     return await apiRequest(`/${collectionName}/find`, 'POST', { 
                       query,
-                      options: { sort: sortOptions, limit }
+                      options: { sort: true, limit }
                     });
                   }
                 })
@@ -134,7 +121,7 @@ class ApiMongoClient {
           deleteOne: async (query: any) => {
             return await apiRequest(`/${collectionName}/deleteOne`, 'POST', { query });
           },
-          deleteMany: async (query = {}) => {
+          deleteMany: async (query: any) => {
             return await apiRequest(`/${collectionName}/deleteMany`, 'POST', { query });
           }
         };

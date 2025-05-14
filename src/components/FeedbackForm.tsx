@@ -1,15 +1,16 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Feedback, analyzeSentiment, getRatingEmoji } from '@/utils/sentimentUtils';
+import { Feedback, analyzeSentiment, saveFeedback, getRatingEmoji } from '@/utils/sentimentUtils';
 import { getQRCode, incrementScan } from '@/utils/qrCodeUtils';
 import { toast } from 'sonner';
 import { Loader2, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { saveFeedbackToMongoDB } from '@/utils/feedback/feedbackMongodb';
+import { storeFeedbackToStorage } from '@/utils/qrCode/storageUtils';
 import { getSynchronizationStatus } from '@/utils/firebase/networkStatus';
 import { CustomQuestion, CustomQuestionAnswer } from '@/utils/qrCode/types';
 import CustomQuestionInput from './CustomQuestionInput';
@@ -175,6 +176,7 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
       
       // Create feedback object with required properties
       const newFeedback = {
+        id: 'local-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
         qrCodeId,
         name,
         phoneNumber,
@@ -183,14 +185,15 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
         comment,
         context: qrCodeContext || 'Unknown',
         sentiment: analyzeSentiment(rating as number),
+        createdAt: new Date().toISOString(),
         message: comment, // Include message field for compatibility
         customAnswers: formattedCustomAnswers.length > 0 ? formattedCustomAnswers : undefined
       };
       
-      // Save feedback to MongoDB instead of localStorage
-      const savedFeedback = await saveFeedbackToMongoDB(newFeedback);
+      // Store directly to localStorage using storageUtils function
+      const success = await storeFeedbackToStorage(newFeedback);
       
-      if (savedFeedback) {
+      if (success) {
         // Show success message
         toast.success('Thank you for your feedback!');
         
@@ -295,7 +298,7 @@ const FeedbackForm = ({ qrCodeId, onSubmitSuccess }: FeedbackFormProps) => {
         <div className="space-y-2">
           <h3 className="text-sm font-medium">How would you rate your experience?</h3>
           <div className="flex justify-between items-center">
-            {[1, 2, 3, 4, 5].map((value) => (
+            {ratingOptions.map((value) => (
               <Button
                 key={value}
                 type="button"
