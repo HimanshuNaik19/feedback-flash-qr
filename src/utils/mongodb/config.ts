@@ -42,6 +42,19 @@ async function apiRequest(endpoint: string, method: string = 'GET', data?: any) 
   }
 }
 
+// Generate mock ObjectId for client-side - we'll use actual ObjectIds on the server
+export class ObjectId {
+  id: string;
+  
+  constructor(id?: string) {
+    this.id = id || crypto.randomUUID();
+  }
+  
+  toString() {
+    return this.id;
+  }
+}
+
 // Mock collection interface that matches the MongoDB Collection interface
 // but uses the API under the hood
 export interface ApiCollection {

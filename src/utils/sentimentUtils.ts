@@ -1,5 +1,4 @@
 
-import { toast } from 'sonner';
 import { 
   saveFeedbackToMongoDB, 
   getAllFeedbackFromMongoDB, 
@@ -7,76 +6,69 @@ import {
   deleteAllFeedbackFromMongoDB, 
   getFeedbackByQRCodeId
 } from './feedback/feedbackMongodb';
-import { CustomQuestionAnswer } from './qrCode/types';
 
 export interface Feedback {
   id: string;
   qrCodeId: string;
-  name: string;          // Add name field
-  phoneNumber: string;   // Add phone number field
-  email?: string;        // Add optional email field
-  comment: string;       // Comment is now required
-  rating?: number;       // User rating
-  context?: string;      // Context of the feedback
-  sentiment: 'positive' | 'neutral' | 'negative';
+  name: string;
+  phoneNumber: string;
+  email?: string;
+  rating: 1 | 2 | 3 | 4 | 5;
+  comment: string;
+  sentiment: 'negative' | 'neutral' | 'positive';
   createdAt: string;
-  message?: string;     // Make message optional since we're using comment instead
-  customAnswers?: CustomQuestionAnswer[]; // Add custom answers field
+  message: string;
+  context: string;
+  customAnswers?: { questionId: string; answer: string }[];
 }
 
-// Function to get all feedback from MongoDB
+// Helper function to get emoji for rating
+export const getRatingEmoji = (rating: number): string => {
+  switch (rating) {
+    case 1: return '😡';
+    case 2: return '🙁';
+    case 3: return '😐';
+    case 4: return '🙂';
+    case 5: return '😄';
+    default: return '❓';
+  }
+};
+
+// Function to analyze sentiment based on rating
+export const analyzeSentiment = (rating: number): 'negative' | 'neutral' | 'positive' => {
+  if (rating >= 4) return 'positive';
+  if (rating <= 2) return 'negative';
+  return 'neutral';
+};
+
+// Function to get sentiment color for UI
+export const getSentimentColor = (sentiment: string): string => {
+  switch (sentiment) {
+    case 'positive': return 'text-green-500';
+    case 'negative': return 'text-red-500';
+    case 'neutral': return 'text-amber-500';
+    default: return 'text-gray-500';
+  }
+};
+
+// Function to get background color for sentiment
+export const getSentimentBgColor = (sentiment: string): string => {
+  switch (sentiment) {
+    case 'positive': return 'bg-green-50 border-green-200';
+    case 'negative': return 'bg-red-50 border-red-200';
+    case 'neutral': return 'bg-amber-50 border-amber-200';
+    default: return 'bg-gray-50 border-gray-200';
+  }
+};
+
+// Function to get all feedback items
 export const getAllFeedback = async (): Promise<Feedback[]> => {
   try {
-    return await getAllFeedbackFromMongoDB();
+    const data = await getAllFeedbackFromMongoDB();
+    return data;
   } catch (error) {
-    console.error('Error getting feedback from MongoDB:', error);
-    toast.error('Failed to fetch feedback data');
+    console.error('Error in getAllFeedback:', error);
     return [];
-  }
-};
-
-// Delete all feedback (from MongoDB)
-export const deleteAllFeedback = async (): Promise<boolean> => {
-  try {
-    const success = await deleteAllFeedbackFromMongoDB();
-    if (success) {
-      toast.success('All feedback deleted successfully');
-    }
-    return success;
-  } catch (error) {
-    console.error('Error deleting all feedback:', error);
-    toast.error('An error occurred while deleting feedback');
-    return false;
-  }
-};
-
-// Add the missing functions that are needed by FeedbackForm.tsx and FeedbackList.tsx
-export const analyzeSentiment = (rating: number): 'positive' | 'neutral' | 'negative' => {
-  if (rating >= 4) return 'positive';
-  if (rating >= 2) return 'neutral';
-  return 'negative';
-};
-
-// Update to use MongoDB
-export const saveFeedback = async (feedback: Omit<Feedback, 'id' | 'createdAt' | 'sentiment'>): Promise<Feedback | null> => {
-  try {
-    // Add sentiment based on rating
-    const sentiment = analyzeSentiment(feedback.rating as number);
-    
-    // Create the complete feedback object
-    const feedbackWithSentiment = { 
-      ...feedback,
-      sentiment,
-      // Add empty message if not provided (for compatibility)
-      message: feedback.message || feedback.comment || ''
-    };
-    
-    // Store to MongoDB
-    return await saveFeedbackToMongoDB(feedbackWithSentiment);
-  } catch (error) {
-    console.error('Error saving feedback:', error);
-    toast.error('Failed to save feedback');
-    return null;
   }
 };
 
@@ -86,34 +78,16 @@ export const deleteFeedback = async (id: string): Promise<boolean> => {
     return await deleteFeedbackFromMongoDB(id);
   } catch (error) {
     console.error('Error deleting feedback:', error);
-    toast.error('Failed to delete feedback');
     return false;
   }
 };
 
-export const getRatingEmoji = (rating?: number): string => {
-  if (!rating) return '😐';
-  
-  switch (rating) {
-    case 5: return '😁';
-    case 4: return '🙂';
-    case 3: return '😐';
-    case 2: return '🙁';
-    case 1: return '😞';
-    default: return '😐';
-  }
-};
-
-// Get appropriate color class for each sentiment
-export const getSentimentColor = (sentiment: string): string => {
-  switch (sentiment) {
-    case 'positive':
-      return 'bg-green-500';
-    case 'neutral':
-      return 'bg-amber-500';
-    case 'negative':
-      return 'bg-red-500';
-    default:
-      return 'bg-gray-300';
+// Function to delete all feedback
+export const deleteAllFeedback = async (): Promise<boolean> => {
+  try {
+    return await deleteAllFeedbackFromMongoDB();
+  } catch (error) {
+    console.error('Error in deleteAllFeedback:', error);
+    return false;
   }
 };

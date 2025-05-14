@@ -3,7 +3,6 @@ import { v4 as uuidv4 } from 'uuid';
 import type { QRCodeContext } from './types';
 import { getDb } from '../mongodb/config';
 import { toast } from 'sonner';
-import { ObjectId } from 'mongodb';
 
 // Constants
 const QR_CODES_COLLECTION = 'qrCodes';
@@ -236,10 +235,6 @@ export const clearCache = () => {
   allQRCodesCacheTimestamp = 0;
   console.log('QR code cache cleared');
 };
-
-// Import these functions from feedback module instead of re-exporting
-// Removing the re-export statements that were causing errors
-// We'll import them directly where needed
 
 // Dummy function to satisfy imports in other files
 export const syncPendingQRCodes = async (): Promise<number> => {
