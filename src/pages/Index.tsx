@@ -6,7 +6,6 @@ import FeedbackDashboard from '@/components/FeedbackDashboard';
 import { Button } from '@/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
-import { forceSynchronization } from '@/utils/firebase/networkStatus'; // Fixed import path
 
 const Index = () => {
   const queryClient = useQueryClient();
@@ -15,9 +14,6 @@ const Index = () => {
     try {
       // Show toast for refresh start
       toast.info('Refreshing dashboard data...');
-      
-      // Force sync with Firebase (fixed from MongoDB)
-      await forceSynchronization();
       
       // Invalidate and refetch all queries
       await queryClient.invalidateQueries();
@@ -34,11 +30,7 @@ const Index = () => {
     <Layout>
       <div className="container max-w-6xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold gradient-heading">Dashboard</h1>
-            <p className="text-muted-foreground">Monitor and analyze feedback in real-time</p>
-          </div>
-          
+          <h1 className="text-3xl font-bold gradient-heading">Dashboard</h1>
           <Button 
             variant="outline" 
             size="sm"

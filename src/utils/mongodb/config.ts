@@ -1,9 +1,9 @@
 
-// MongoDB API configuration
-// This file configures the interaction with our MongoDB backend API
+// MySQL API configuration
+// This file configures the interaction with our MySQL backend API
 
 // Define API endpoint (this would point to your actual backend in production)
-const API_BASE_URL = '/api/mongodb'; // This would be replaced with your actual backend URL in production
+const API_BASE_URL = '/api/mysql'; // This would be replaced with your actual backend URL in production
 
 // Helper function for making API requests with error handling
 async function apiRequest(endpoint: string, method: string = 'GET', data?: any) {
@@ -42,12 +42,12 @@ async function apiRequest(endpoint: string, method: string = 'GET', data?: any) 
   }
 }
 
-// Mock collection interface that matches the MongoDB Collection interface
+// Mock collection interface that matches the MySQL Collection interface
 // but uses the API under the hood
 export interface ApiCollection {
   find: (query?: any) => {
     toArray: () => Promise<any[]>;
-    sort: () => {
+    sort: (sortOptions?: any) => {
       limit: (n: number) => {
         toArray: () => Promise<any[]>;
       };
@@ -60,8 +60,8 @@ export interface ApiCollection {
   deleteMany: (query: any) => Promise<{ deletedCount: number }>;
 }
 
-// Create a mock MongoDB client that uses the API
-class ApiMongoClient {
+// Create a mock MySQL client that uses the API
+class ApiMySQLClient {
   private connected = false;
 
   async connect() {
@@ -69,9 +69,9 @@ class ApiMongoClient {
     try {
       await apiRequest('/ping');
       this.connected = true;
-      console.log("✅ Connected successfully to MongoDB API");
+      console.log("✅ Connected successfully to MySQL API");
     } catch (error) {
-      console.error("Failed to connect to MongoDB API:", error);
+      console.error("Failed to connect to MySQL API:", error);
       // Still mark as connected to allow offline mode to work
       this.connected = true;
     }
@@ -80,7 +80,7 @@ class ApiMongoClient {
 
   async close() {
     this.connected = false;
-    console.log("MongoDB API connection closed");
+    console.log("MySQL API connection closed");
     return true;
   }
 
@@ -134,7 +134,7 @@ class ApiMongoClient {
 }
 
 // Create a new API client instance
-const client = new ApiMongoClient();
+const client = new ApiMySQLClient();
 
 // Export functions for the rest of the application
 export const getClient = async () => {
@@ -146,7 +146,7 @@ export const getDb = async (dbName: string = 'feedbackApp') => {
   return (await getClient()).db(dbName);
 };
 
-// Helper function to close MongoDB connection on app exit
+// Helper function to close MySQL connection on app exit
 export const cleanup = async () => {
   await client.close();
 };
