@@ -1,6 +1,12 @@
 
 import { toast } from 'sonner';
-import { getAllFeedbackFromStorage, deleteFeedbackByIdFromStorage, deleteAllFeedbackFromStorage } from './qrCode/storageUtils';
+import { 
+  saveFeedbackToMongoDB, 
+  getAllFeedbackFromMongoDB, 
+  deleteFeedback, 
+  deleteAllFeedbackFromMongoDB, 
+  getFeedbackByQRCodeId
+} from './feedback/feedbackMongodb';
 import { CustomQuestionAnswer } from './qrCode/types';
 
 export interface Feedback {
@@ -18,23 +24,24 @@ export interface Feedback {
   customAnswers?: CustomQuestionAnswer[]; // Add custom answers field
 }
 
-// Function to get all feedback from localStorage
-export const getAllFeedback = (): Feedback[] => {
+// Function to get all feedback from MongoDB
+export const getAllFeedback = async (): Promise<Feedback[]> => {
   try {
-    // Use the storageUtils function to get all feedback but ensure it returns an array directly
-    const storedFeedback = localStorage.getItem('feedback');
-    return storedFeedback ? JSON.parse(storedFeedback) : [];
+    return await getAllFeedbackFromMongoDB();
   } catch (error) {
-    console.error('Error getting feedback from localStorage:', error);
+    console.error('Error getting feedback from MongoDB:', error);
+    toast.error('Failed to fetch feedback data');
     return [];
   }
 };
 
-// Delete all feedback (from localStorage)
+// Delete all feedback (from MongoDB)
 export const deleteAllFeedback = async (): Promise<boolean> => {
   try {
-    // Use the storageUtils function to delete all feedback
-    const success = await deleteAllFeedbackFromStorage();
+    const success = await deleteAllFeedbackFromMongoDB();
+    if (success) {
+      toast.success('All feedback deleted successfully');
+    }
     return success;
   } catch (error) {
     console.error('Error deleting all feedback:', error);
@@ -50,7 +57,7 @@ export const analyzeSentiment = (rating: number): 'positive' | 'neutral' | 'nega
   return 'negative';
 };
 
-// Update to directly use storageUtils
+// Update to use MongoDB
 export const saveFeedback = async (feedback: Omit<Feedback, 'id' | 'createdAt' | 'sentiment'>): Promise<Feedback | null> => {
   try {
     // Add sentiment based on rating
@@ -58,23 +65,14 @@ export const saveFeedback = async (feedback: Omit<Feedback, 'id' | 'createdAt' |
     
     // Create the complete feedback object
     const feedbackWithSentiment = { 
-      id: 'local-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
       ...feedback,
       sentiment,
-      createdAt: new Date().toISOString(),
       // Add empty message if not provided (for compatibility)
       message: feedback.message || feedback.comment || ''
     };
     
-    // Store to localStorage
-    const success = await import('./qrCode/storageUtils').then(module => 
-      module.storeFeedbackToStorage(feedbackWithSentiment)
-    );
-    
-    if (success) {
-      return feedbackWithSentiment;
-    }
-    return null;
+    // Store to MongoDB
+    return await saveFeedbackToMongoDB(feedbackWithSentiment);
   } catch (error) {
     console.error('Error saving feedback:', error);
     toast.error('Failed to save feedback');
@@ -82,12 +80,13 @@ export const saveFeedback = async (feedback: Omit<Feedback, 'id' | 'createdAt' |
   }
 };
 
+// Update deleteFeedback to use MongoDB
 export const deleteFeedback = async (id: string): Promise<boolean> => {
   try {
-    // Use the storageUtils function to delete feedback by id
-    return await deleteFeedbackByIdFromStorage(id);
+    return await deleteFeedback(id);
   } catch (error) {
     console.error('Error deleting feedback:', error);
+    toast.error('Failed to delete feedback');
     return false;
   }
 };

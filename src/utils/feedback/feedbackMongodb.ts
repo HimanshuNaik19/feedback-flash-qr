@@ -79,8 +79,8 @@ export const getFeedbackFromMongoDB = async (id: string): Promise<Feedback | nul
     const collection = await getFeedbackCollection();
     
     try {
-      // In our mock implementation, we'll search by id property instead of _id
-      const result = await collection.findOne({ id: id });
+      // Find by MongoDB ObjectId
+      const result = await collection.findOne({ _id: id });
       
       if (result) {
         return convertMongoDocToFeedback(result);
@@ -96,7 +96,7 @@ export const getFeedbackFromMongoDB = async (id: string): Promise<Feedback | nul
 export const getAllFeedbackFromMongoDB = async (): Promise<Feedback[]> => {
   return retryOperation(async () => {
     const collection = await getFeedbackCollection();
-    const cursor = collection.find().sort().limit(100);
+    const cursor = collection.find().sort({ timestamp: -1 }).limit(100);
     
     const results = await cursor.toArray();
     console.log(`Retrieved ${results.length} feedback items from MongoDB`);
@@ -108,7 +108,7 @@ export const getAllFeedbackFromMongoDB = async (): Promise<Feedback[]> => {
 export const getFeedbackByQRCodeId = async (qrCodeId: string): Promise<Feedback[]> => {
   return retryOperation(async () => {
     const collection = await getFeedbackCollection();
-    const cursor = collection.find({ qrCodeId }).sort().limit(50);
+    const cursor = collection.find({ qrCodeId }).sort({ timestamp: -1 }).limit(50);
     
     const results = await cursor.toArray();
     console.log(`Retrieved ${results.length} feedback items for QR code ID: ${qrCodeId}`);
@@ -122,8 +122,7 @@ export const deleteFeedback = async (id: string): Promise<boolean> => {
     const collection = await getFeedbackCollection();
     
     try {
-      // In our mock implementation, we'll delete by id property instead of _id
-      const result = await collection.deleteOne({ id: id });
+      const result = await collection.deleteOne({ _id: id });
       
       if (result.deletedCount > 0) {
         console.log('Feedback deleted from MongoDB:', id);

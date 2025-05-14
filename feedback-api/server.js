@@ -33,7 +33,16 @@ async function connectToMongo() {
     client = new MongoClient(mongoUri);
     await client.connect();
     console.log("✅ Connected to MongoDB");
-    return client.db(dbName);
+    
+    const db = client.db(dbName);
+    
+    // Ensure collections exist by accessing them
+    // MongoDB will create them if they don't exist
+    await db.collection('feedback').findOne({});
+    await db.collection('qrCodes').findOne({});
+    
+    console.log("✅ Collections verified/created");
+    return db;
   } catch (error) {
     console.error("❌ Error connecting to MongoDB:", error);
     throw error;
@@ -48,7 +57,7 @@ app.get('/api/mongodb/ping', async (req, res) => {
   try {
     const db = await dbPromise;
     await db.command({ ping: 1 });
-    res.json({ status: "ok" });
+    res.json({ status: "ok", message: "MongoDB connection successful" });
   } catch (error) {
     console.error("Health check failed:", error);
     res.status(500).json({ error: error.message });
