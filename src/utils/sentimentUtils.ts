@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { 
   saveFeedbackToMongoDB, 
   getAllFeedbackFromMongoDB, 
-  deleteFeedback, 
+  deleteFeedbackFromMongoDB, 
   deleteAllFeedbackFromMongoDB, 
   getFeedbackByQRCodeId
 } from './feedback/feedbackMongodb';
@@ -80,10 +80,10 @@ export const saveFeedback = async (feedback: Omit<Feedback, 'id' | 'createdAt' |
   }
 };
 
-// Update deleteFeedback to use MongoDB
+// Update deleteFeedback to use MongoDB - renamed to avoid conflicts
 export const deleteFeedback = async (id: string): Promise<boolean> => {
   try {
-    return await deleteFeedback(id);
+    return await deleteFeedbackFromMongoDB(id);
   } catch (error) {
     console.error('Error deleting feedback:', error);
     toast.error('Failed to delete feedback');

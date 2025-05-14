@@ -2,6 +2,7 @@
 import { getDb } from '../mongodb/config';
 import { Feedback } from '../sentimentUtils';
 import { toast } from 'sonner';
+import { ObjectId } from 'mongodb';
 
 // Constants
 const FEEDBACK_COLLECTION = 'feedback';
@@ -80,7 +81,7 @@ export const getFeedbackFromMongoDB = async (id: string): Promise<Feedback | nul
     
     try {
       // Find by MongoDB ObjectId
-      const result = await collection.findOne({ _id: id });
+      const result = await collection.findOne({ _id: new ObjectId(id) });
       
       if (result) {
         return convertMongoDocToFeedback(result);
@@ -117,12 +118,12 @@ export const getFeedbackByQRCodeId = async (qrCodeId: string): Promise<Feedback[
   });
 };
 
-export const deleteFeedback = async (id: string): Promise<boolean> => {
+export const deleteFeedbackFromMongoDB = async (id: string): Promise<boolean> => {
   return retryOperation(async () => {
     const collection = await getFeedbackCollection();
     
     try {
-      const result = await collection.deleteOne({ _id: id });
+      const result = await collection.deleteOne({ _id: new ObjectId(id) });
       
       if (result.deletedCount > 0) {
         console.log('Feedback deleted from MongoDB:', id);

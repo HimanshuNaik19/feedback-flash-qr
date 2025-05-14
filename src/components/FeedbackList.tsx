@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Feedback, getSentimentColor, getRatingEmoji, deleteFeedback } from '@/utils/sentimentUtils';
 import { format } from 'date-fns';
@@ -35,14 +34,9 @@ const FeedbackList = ({ feedbackItems, onFeedbackDeleted }: FeedbackListProps) =
     );
   }
   
-  const handleDeleteClick = (id: string) => {
-    setFeedbackToDelete(id);
-    setDeleteDialogOpen(true);
-  };
-  
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (feedbackToDelete) {
-      const success = deleteFeedback(feedbackToDelete);
+      const success = await deleteFeedback(feedbackToDelete);
       if (success) {
         toast.success('Feedback deleted successfully');
         if (onFeedbackDeleted) {
@@ -54,6 +48,11 @@ const FeedbackList = ({ feedbackItems, onFeedbackDeleted }: FeedbackListProps) =
       setDeleteDialogOpen(false);
       setFeedbackToDelete(null);
     }
+  };
+  
+  const handleDeleteClick = (id: string) => {
+    setFeedbackToDelete(id);
+    setDeleteDialogOpen(true);
   };
   
   const cancelDelete = () => {
