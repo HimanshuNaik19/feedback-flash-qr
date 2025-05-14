@@ -55,12 +55,12 @@ export class ObjectId {
   }
 }
 
-// Mock collection interface that matches the MongoDB Collection interface
-// but uses the API under the hood
+// Updated collection interface that matches the MongoDB Collection interface
+// but uses the API under the hood, with proper argument support
 export interface ApiCollection {
   find: (query?: any) => {
     toArray: () => Promise<any[]>;
-    sort: () => {
+    sort: (sortOptions?: any) => {
       limit: (n: number) => {
         toArray: () => Promise<any[]>;
       };
@@ -70,7 +70,7 @@ export interface ApiCollection {
   insertOne: (doc: any) => Promise<{ insertedId: string }>;
   updateOne: (query: any, update: any, options?: { upsert?: boolean }) => Promise<{ modifiedCount: number }>;
   deleteOne: (query: any) => Promise<{ deletedCount: number }>;
-  deleteMany: (query: any) => Promise<{ deletedCount: number }>;
+  deleteMany: (query?: any) => Promise<{ deletedCount: number }>;
 }
 
 // Create a mock MongoDB client that uses the API
@@ -106,12 +106,12 @@ class ApiMongoClient {
               toArray: async () => {
                 return await apiRequest(`/${collectionName}/find`, 'POST', { query });
               },
-              sort: () => ({
+              sort: (sortOptions = {}) => ({
                 limit: (limit: number) => ({
                   toArray: async () => {
                     return await apiRequest(`/${collectionName}/find`, 'POST', { 
                       query,
-                      options: { sort: true, limit }
+                      options: { sort: sortOptions, limit }
                     });
                   }
                 })
@@ -134,7 +134,7 @@ class ApiMongoClient {
           deleteOne: async (query: any) => {
             return await apiRequest(`/${collectionName}/deleteOne`, 'POST', { query });
           },
-          deleteMany: async (query: any) => {
+          deleteMany: async (query = {}) => {
             return await apiRequest(`/${collectionName}/deleteMany`, 'POST', { query });
           }
         };
