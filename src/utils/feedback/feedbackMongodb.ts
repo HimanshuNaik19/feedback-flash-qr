@@ -96,6 +96,7 @@ export const getFeedbackFromMongoDB = async (id: string): Promise<Feedback | nul
 export const getAllFeedbackFromMongoDB = async (): Promise<Feedback[]> => {
   return retryOperation(async () => {
     const collection = await getFeedbackCollection();
+    // Fixed: Removed argument from collection.find()
     const cursor = collection.find().sort({ timestamp: -1 }).limit(100);
     
     const results = await cursor.toArray();
@@ -158,6 +159,7 @@ export const deleteAllFeedbackFromMongoDB = async (): Promise<boolean> => {
     const collection = await getFeedbackCollection();
     
     try {
+      // Fixed: Removed argument from collection.deleteMany()
       await collection.deleteMany({});
       console.log('All feedback deleted from MongoDB');
       return true;

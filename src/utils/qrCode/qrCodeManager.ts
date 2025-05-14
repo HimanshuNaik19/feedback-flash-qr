@@ -142,6 +142,7 @@ export const getAllQRCodes = async (): Promise<QRCodeContext[]> => {
   
   return retryOperation(async () => {
     const collection = await getQRCodesCollection();
+    // Fixed: Removed argument from collection.find()
     const cursor = collection.find().sort({ createdAt: -1 }).limit(100);
     
     const results = await cursor.toArray();
